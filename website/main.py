@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 # Import the processing function from the previous step
@@ -18,6 +18,10 @@ VOLUME_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
 
 # Mount the static directory to serve the frontend website
 app.mount("/static", StaticFiles(directory="./website/static"), name="static")
+
+@app.get("/")
+async def read_index():
+    return FileResponse("./website/static/index.html")
 
 @app.post("/api/calculate-volume")
 async def calculate_volume(
