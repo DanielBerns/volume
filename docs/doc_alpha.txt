@@ -1,0 +1,6 @@
+Deseo estimar el volumen de materia vegetal en un espacio de un metro cúbico mediante tres fotografías tomadas sobre ejes mutuamente
+perpendiculares. La materia vegetal cuyo volumen se desea estimar esta contenida en un cubo de un metro cúbico con cinco caras de vidrio.
+En dos de las fotos, la cara opuesta a la cara donde se toma la fotografía se cubre con un material de color muy diferente al del material vegetal observado.
+
+1. Deseo desarrollar un algoritmo que me permita obtener una aproximación al volumen de material vegetal.
+2. Deseo implementar un sitio web, que funcionará en una red local (no publicado en la internet pública) que me permita subir grupos de tres fotografías y obtener la estimación del volumen de material vegetal. Las fotografías usadas como dato y los resultados deben quedar almacenados en archivos adecuadamente rotulados en un directorio especifico.

@@ -1,0 +1,22 @@
+[project]
+name = "volumen"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "DanielBerns", email = "daniel.w.berns@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.135.1",
+    "numpy>=2.4.3",
+    "pillow>=12.1.1",
+    "python-multipart>=0.0.22",
+]
+
+[project.scripts]
+volumen = "volumen:main"
+
+[build-system]
+requires = ["uv_build>=0.10.9,<0.11.0"]
+build-backend = "uv_build"
