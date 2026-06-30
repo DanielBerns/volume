@@ -2,42 +2,412 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Plant Volume Estimator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Volume Estimator Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
-        #result { margin-top: 20px; padding: 15px; background: #eef; display: none; border-radius: 5px;}
+        :root {
+            --bg-color: #0f172a;
+            --surface: #1e293b;
+            --surface-hover: #334155;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --accent: #10b981;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #475569;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        h1, h2, h3 {
+            margin-top: 0;
+            font-weight: 600;
+        }
+
+        h1 {
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 30px;
+        }
+
+        .step-container {
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .step-container.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            background: var(--surface);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        input[type="file"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-color);
+            color: var(--text-main);
+            box-sizing: border-box;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+        }
+
+        .canvas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .canvas-wrapper {
+            background: var(--surface);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            position: relative;
+        }
+
+        canvas {
+            max-width: 100%;
+            border-radius: 4px;
+            cursor: crosshair;
+            border: 1px solid var(--border);
+        }
+        
+        .hint {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .result-box {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--accent);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .volume-text {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
-    <h2>Upload Orthogonal Photographs</h2>
-    <form id="uploadForm">
-        <div class="form-group">
-            <label>XY Axis Photo (Contrasting Background):</label>
-            <input type="file" id="photo_xy" accept="image/jpeg, image/png" required>
-        </div>
-        <div class="form-group">
-            <label>YZ Axis Photo (Contrasting Background):</label>
-            <input type="file" id="photo_yz" accept="image/jpeg, image/png" required>
-        </div>
-        <div class="form-group">
-            <label>XZ Axis Photo (Standard Background):</label>
-            <input type="file" id="photo_xz" accept="image/jpeg, image/png" required>
-        </div>
-        <button type="submit">Calculate Volume</button>
-    </form>
+    <div class="container">
+        <h1>Plant Volume Estimator Pro</h1>
 
-    <div id="result">
-        <h3>Estimation Complete</h3>
-        <p><strong>Calculated Volume:</strong> <span id="volumeOutput"></span> m³</p>
-        <p><em>Check the generated 'data' folder for the saved run files.</em></p>
+        <!-- STEP 1: UPLOAD -->
+        <div id="step1" class="step-container active">
+            <h2>Step 1: Upload Images</h2>
+            <form id="uploadForm">
+                <div class="form-group">
+                    <label>XY Axis Photo</label>
+                    <input type="file" id="photo_xy" accept="image/jpeg, image/png" required>
+                </div>
+                <div class="form-group">
+                    <label>YZ Axis Photo</label>
+                    <input type="file" id="photo_yz" accept="image/jpeg, image/png" required>
+                </div>
+                <div class="form-group">
+                    <label>XZ Axis Photo</label>
+                    <input type="file" id="photo_xz" accept="image/jpeg, image/png" required>
+                </div>
+                <button type="submit" id="btnUpload">Segment Images</button>
+            </form>
+        </div>
+
+        <!-- STEP 2: EDIT MASKS -->
+        <div id="step2" class="step-container">
+            <h2>Step 2: Refine Masks</h2>
+            <p class="hint">Click and drag on the images to select a rectangle of pixels you want to include in the plant mask.</p>
+            
+            <div class="canvas-grid">
+                <div class="canvas-wrapper">
+                    <h3>XY View</h3>
+                    <canvas id="canvas_xy"></canvas>
+                </div>
+                <div class="canvas-wrapper">
+                    <h3>YZ View</h3>
+                    <canvas id="canvas_yz"></canvas>
+                </div>
+                <div class="canvas-wrapper">
+                    <h3>XZ View</h3>
+                    <canvas id="canvas_xz"></canvas>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 30px;">
+                <label>Focal Length (mm) [Auto-extracted from EXIF]</label>
+                <input type="number" id="focal_length" step="0.1" value="50.0">
+            </div>
+
+            <button id="btnCalculate">Calculate Volume</button>
+        </div>
+
+        <!-- STEP 3: RESULT -->
+        <div id="step3" class="step-container">
+            <h2>Step 3: Result</h2>
+            <div class="result-box">
+                <p>Estimated Volume</p>
+                <div class="volume-text"><span id="volumeOutput">0.000000</span> m³</div>
+            </div>
+            <button onclick="location.reload()">Start Over</button>
+        </div>
     </div>
 
     <script>
+        let currentRunId = null;
+        let imagesData = { xy: null, yz: null, xz: null };
+        let masksData = { xy: null, yz: null, xz: null };
+
+        // Helper to convert RGB to HSV (Pillow scale: H 0-255, S 0-255, V 0-255)
+        function rgbToHsv(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            let max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, v = max;
+            let d = max - min;
+            s = max === 0 ? 0 : d / max;
+            if (max === min) {
+                h = 0; // achromatic
+            } else {
+                switch (max) {
+                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                    case g: h = (b - r) / d + 2; break;
+                    case b: h = (r - g) / d + 4; break;
+                }
+                h /= 6;
+            }
+            return [Math.round(h * 255), Math.round(s * 255), Math.round(v * 255)];
+        }
+
+        // Setup Canvas Drawing and Selection
+        function setupCanvas(view) {
+            const canvas = document.getElementById(`canvas_${view}`);
+            const ctx = canvas.getContext('2d');
+            
+            let isDrawing = false;
+            let startX, startY;
+
+            function render() {
+                if (!imagesData[view]) return;
+                
+                // Set canvas size to match image layout size
+                const img = imagesData[view];
+                const mask = masksData[view];
+                
+                // Fixed display width, proportional height
+                const displayWidth = 280; 
+                const scale = displayWidth / img.width;
+                const displayHeight = img.height * scale;
+                
+                canvas.width = displayWidth;
+                canvas.height = displayHeight;
+
+                // Draw base image
+                ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
+
+                // Draw mask as green overlay
+                if (mask) {
+                    ctx.globalAlpha = 0.5;
+                    // For the mask, we need to tint it green. We'll draw the mask image.
+                    // Wait, the mask is a B&W image. We can composite it.
+                    // Let's create an offscreen canvas to color the mask
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = displayWidth;
+                    tempCanvas.height = displayHeight;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCtx.drawImage(mask, 0, 0, displayWidth, displayHeight);
+                    tempCtx.globalCompositeOperation = "source-in";
+                    tempCtx.fillStyle = "#10b981"; // Green
+                    tempCtx.fillRect(0, 0, displayWidth, displayHeight);
+                    
+                    ctx.drawImage(tempCanvas, 0, 0);
+                    ctx.globalAlpha = 1.0;
+                }
+            }
+
+            canvas.addEventListener('mousedown', (e) => {
+                isDrawing = true;
+                const rect = canvas.getBoundingClientRect();
+                startX = e.clientX - rect.left;
+                startY = e.clientY - rect.top;
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (!isDrawing) return;
+                render(); // redraw to clear previous rect
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(startX, startY, x - startX, y - startY);
+            });
+
+            canvas.addEventListener('mouseup', async (e) => {
+                if (!isDrawing) return;
+                isDrawing = false;
+                const rect = canvas.getBoundingClientRect();
+                const endX = e.clientX - rect.left;
+                const endY = e.clientY - rect.top;
+
+                const x = Math.min(startX, endX);
+                const y = Math.min(startY, endY);
+                const w = Math.abs(endX - startX);
+                const h = Math.abs(endY - startY);
+
+                if (w > 2 && h > 2) {
+                    await handleSelection(view, x, y, w, h);
+                } else {
+                    render();
+                }
+            });
+
+            return { render };
+        }
+
+        const renderers = {
+            xy: setupCanvas('xy'),
+            yz: setupCanvas('yz'),
+            xz: setupCanvas('xz')
+        };
+
+        async function handleSelection(view, x, y, w, h) {
+            const canvas = document.createElement('canvas');
+            const img = imagesData[view];
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+
+            // Calculate coordinates relative to original image scale
+            const displayScale = 280 / img.width;
+            const origX = Math.round(x / displayScale);
+            const origY = Math.round(y / displayScale);
+            const origW = Math.round(w / displayScale);
+            const origH = Math.round(h / displayScale);
+
+            const imgData = ctx.getImageData(origX, origY, origW, origH).data;
+            const sampled = [];
+            
+            // Sample up to 50 random pixels from the selection
+            const numPixels = origW * origH;
+            const maxSamples = 50;
+            const step = Math.max(1, Math.floor(numPixels / maxSamples));
+
+            for (let i = 0; i < numPixels; i += step) {
+                const idx = i * 4;
+                const r = imgData[idx];
+                const g = imgData[idx + 1];
+                const b = imgData[idx + 2];
+                sampled.push(rgbToHsv(r, g, b));
+            }
+
+            if (sampled.length > 0) {
+                try {
+                    const response = await fetch('/api/update-mask', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            run_id: currentRunId,
+                            view: view,
+                            sampled_pixels: sampled,
+                            tolerance: 20
+                        })
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        await loadImage(view, data.mask_url, true);
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        }
+
+        function loadImage(view, url, isMask = false) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    if (isMask) masksData[view] = img;
+                    else imagesData[view] = img;
+                    renderers[view].render();
+                    resolve();
+                };
+                img.src = url;
+            });
+        }
+
         document.getElementById('uploadForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const btn = document.getElementById('btnUpload');
+            btn.innerText = "Segmenting...";
+            btn.disabled = true;
 
             const formData = new FormData();
             formData.append('photo_xy', document.getElementById('photo_xy').files[0]);
@@ -45,23 +415,64 @@
             formData.append('photo_xz', document.getElementById('photo_xz').files[0]);
 
             try {
-                const response = await fetch('/api/calculate-volume', {
-                    method: 'POST',
-                    body: formData
-                });
-
+                const response = await fetch('/api/segment', { method: 'POST', body: formData });
                 const data = await response.json();
 
                 if (response.ok) {
-                    document.getElementById('volumeOutput').innerText = data.estimated_volume_m3.toFixed(6);
-                    document.getElementById('result').style.display = 'block';
+                    currentRunId = data.run_id;
+                    document.getElementById('focal_length').value = data.focal_length.toFixed(2);
+                    
+                    // Load images and masks
+                    await Promise.all([
+                        loadImage('xy', data.images.xy),
+                        loadImage('yz', data.images.yz),
+                        loadImage('xz', data.images.xz),
+                        loadImage('xy', data.masks.xy, true),
+                        loadImage('yz', data.masks.yz, true),
+                        loadImage('xz', data.masks.xz, true)
+                    ]);
+
+                    document.getElementById('step1').classList.remove('active');
+                    document.getElementById('step2').classList.add('active');
                 } else {
                     alert("Error: " + data.detail);
                 }
             } catch (error) {
-                console.error('Error:', error);
                 alert("Failed to connect to the server.");
             }
+            btn.innerText = "Segment Images";
+            btn.disabled = false;
+        });
+
+        document.getElementById('btnCalculate').addEventListener('click', async () => {
+            const btn = document.getElementById('btnCalculate');
+            btn.innerText = "Calculating...";
+            btn.disabled = true;
+
+            try {
+                const focal_length = parseFloat(document.getElementById('focal_length').value);
+                const response = await fetch('/api/calculate-volume', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        run_id: currentRunId,
+                        focal_length: focal_length
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    document.getElementById('volumeOutput').innerText = data.estimated_volume_m3.toFixed(6);
+                    document.getElementById('step2').classList.remove('active');
+                    document.getElementById('step3').classList.add('active');
+                } else {
+                    alert("Error: " + data.detail);
+                }
+            } catch (error) {
+                alert("Failed to calculate volume.");
+            }
+            btn.innerText = "Calculate Volume";
+            btn.disabled = false;
         });
     </script>
 </body>

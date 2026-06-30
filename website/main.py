@@ -1,13 +1,18 @@
 import os
 import shutil
 import json
+import numpy as np
+from PIL import Image
 from pathlib import Path
 from datetime import datetime
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Body
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from typing import List, Optional
 
-# Import the processing function from the previous step
+from volumen.segmentation.strategy import HSVThresholdStrategy, SampledColorStrategy
+from volumen.camera import extract_exif_metadata, get_focal_length
 from volumen.estimator import estimate_volume
 
 app = FastAPI(title="Plant Volume Estimator")
@@ -19,63 +24,136 @@ VOLUME_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
 # Mount the static directory to serve the frontend website
 app.mount("/static", StaticFiles(directory="./website/static"), name="static")
 
+# Mount the volume directory to serve uploaded images and masks to the frontend
+app.mount("/data", StaticFiles(directory=str(VOLUME_DIR)), name="data")
+
 @app.get("/")
 async def read_index():
     return FileResponse("./website/static/index.html")
 
-@app.post("/api/calculate-volume")
-async def calculate_volume(
+def save_mask(mask: np.ndarray, path: str):
+    # Convert boolean mask to 0-255 uint8 image
+    mask_img = Image.fromarray((mask * 255).astype(np.uint8))
+    mask_img.save(path)
+
+@app.post("/api/segment")
+async def segment_images(
     photo_xy: UploadFile = File(...),
     photo_yz: UploadFile = File(...),
     photo_xz: UploadFile = File(...)
 ):
-    # 1. Create a timestamped directory for this specific calculation run
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_dir = os.path.join(VOLUME_DIR, f"run_{timestamp}")
+    run_id = f"run_{timestamp}"
+    run_dir = os.path.join(VOLUME_DIR, run_id)
     os.makedirs(run_dir, exist_ok=True)
 
-    # Define local file paths
-    xy_path = os.path.join(run_dir, "photo_xy.jpg")
-    yz_path = os.path.join(run_dir, "photo_yz.jpg")
-    xz_path = os.path.join(run_dir, "photo_xz.jpg")
-    result_path = os.path.join(run_dir, "result.json")
-
-    # 2. Save the uploaded files efficiently using shutil.copyfileobj
-    # This prevents loading massive image files directly into RAM all at once
-    try:
-        with open(xy_path, "wb") as buffer:
-            shutil.copyfileobj(photo_xy.file, buffer)
-        with open(yz_path, "wb") as buffer:
-            shutil.copyfileobj(photo_yz.file, buffer)
-        with open(xz_path, "wb") as buffer:
-            shutil.copyfileobj(photo_xz.file, buffer)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save images: {str(e)}")
-    finally:
-        # Always close the uploaded files to free up resources
-        photo_xy.file.close()
-        photo_yz.file.close()
-        photo_xz.file.close()
-
-    # 3. Process the images and calculate volume
-    try:
-        volume_m3 = estimate_volume(xy_path, yz_path, xz_path, resolution=256)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Image processing failed: {str(e)}")
-
-    # 4. Save the calculated results and metadata to a JSON file
-    result_data = {
-        "timestamp": timestamp,
-        "estimated_volume_m3": volume_m3,
-        "files_used": {
-            "xy": xy_path,
-            "yz": yz_path,
-            "xz": xz_path
-        }
+    paths = {
+        "xy": os.path.join(run_dir, "photo_xy.jpg"),
+        "yz": os.path.join(run_dir, "photo_yz.jpg"),
+        "xz": os.path.join(run_dir, "photo_xz.jpg")
     }
 
-    with open(result_path, "w") as f:
-        json.dump(result_data, f, indent=4)
+    # Save uploaded images
+    for photo, path in [(photo_xy, paths["xy"]), (photo_yz, paths["yz"]), (photo_xz, paths["xz"])]:
+        with open(path, "wb") as buffer:
+            shutil.copyfileobj(photo.file, buffer)
+        photo.file.close()
 
-    # 5. Return the data to the frontend
-    return JSONResponse(content=result_data)
+    # Extract EXIF focal length from one of the images (assume xy)
+    exif = extract_exif_metadata(paths["xy"])
+    focal_length = get_focal_length(exif, default=50.0)
+
+    # Initial segmentation with default HSV strategy
+    strategy = HSVThresholdStrategy()
+    resolution = 256
+    
+    # We assume xy and yz have contrasting bg, xz might not, as per original logic
+    mask_xy = strategy.create_mask(paths["xy"], resolution, is_contrasting_bg=True)
+    mask_yz = strategy.create_mask(paths["yz"], resolution, is_contrasting_bg=True)
+    mask_xz = strategy.create_mask(paths["xz"], resolution, is_contrasting_bg=False)
+
+    mask_paths = {
+        "xy": os.path.join(run_dir, "mask_xy.png"),
+        "yz": os.path.join(run_dir, "mask_yz.png"),
+        "xz": os.path.join(run_dir, "mask_xz.png")
+    }
+
+    save_mask(mask_xy, mask_paths["xy"])
+    save_mask(mask_yz, mask_paths["yz"])
+    save_mask(mask_xz, mask_paths["xz"])
+
+    return JSONResponse({
+        "run_id": run_id,
+        "focal_length": focal_length,
+        "exif": exif,
+        "images": {k: f"/data/{run_id}/photo_{k}.jpg" for k in paths.keys()},
+        "masks": {k: f"/data/{run_id}/mask_{k}.png" for k in mask_paths.keys()}
+    })
+
+class UpdateMaskRequest(BaseModel):
+    run_id: str
+    view: str  # 'xy', 'yz', or 'xz'
+    sampled_pixels: List[List[int]]  # list of [H, S, V] values
+    tolerance: Optional[int] = 20
+
+@app.post("/api/update-mask")
+async def update_mask(req: UpdateMaskRequest):
+    run_dir = os.path.join(VOLUME_DIR, req.run_id)
+    if not os.path.exists(run_dir):
+        raise HTTPException(status_code=404, detail="Run not found")
+        
+    img_path = os.path.join(run_dir, f"photo_{req.view}.jpg")
+    mask_path = os.path.join(run_dir, f"mask_{req.view}.png")
+    
+    strategy = SampledColorStrategy()
+    mask = strategy.create_mask(
+        img_path, 
+        resolution=256, 
+        sampled_pixels=req.sampled_pixels, 
+        tolerance=req.tolerance
+    )
+    
+    save_mask(mask, mask_path)
+    
+    # Return cache-busting URL
+    timestamp = int(datetime.now().timestamp())
+    return JSONResponse({
+        "mask_url": f"/data/{req.run_id}/mask_{req.view}.png?t={timestamp}"
+    })
+
+class CalculateVolumeRequest(BaseModel):
+    run_id: str
+    focal_length: float
+
+@app.post("/api/calculate-volume")
+async def calculate_volume(req: CalculateVolumeRequest):
+    run_dir = os.path.join(VOLUME_DIR, req.run_id)
+    if not os.path.exists(run_dir):
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    masks = {}
+    for view in ["xy", "yz", "xz"]:
+        mask_path = os.path.join(run_dir, f"mask_{view}.png")
+        if not os.path.exists(mask_path):
+            raise HTTPException(status_code=404, detail=f"Mask for {view} not found")
+        
+        # Load mask and convert to boolean numpy array
+        img = Image.open(mask_path).convert('L')
+        # Mask was saved as 0-255 uint8
+        mask_array = np.array(img) > 128
+        masks[view] = mask_array
+
+    try:
+        volume_m3 = estimate_volume(
+            mask_xy=masks["xy"],
+            mask_yz=masks["yz"],
+            mask_xz=masks["xz"],
+            focal_length=req.focal_length,
+            resolution=256
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Volume calculation failed: {str(e)}")
+
+    return JSONResponse({
+        "estimated_volume_m3": volume_m3
+    })
