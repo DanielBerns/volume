@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 from PIL import Image
+import cv2
 
 class SegmentationStrategy(ABC):
     @abstractmethod
@@ -67,3 +68,54 @@ class SampledColorStrategy(SegmentationStrategy):
             mask = mask | match
 
         return mask
+
+class GrabCutStrategy(SegmentationStrategy):
+    """
+    A strategy that uses OpenCV's GrabCut algorithm for automatic foreground extraction.
+    """
+    def create_mask(self, image_path: str, resolution: int, **kwargs) -> np.ndarray:
+        img = Image.open(image_path).convert('RGB')
+        img = img.resize((resolution, resolution), Image.Resampling.LANCZOS)
+        cv_img = np.array(img)
+        
+        # Convert RGB to BGR for OpenCV
+        cv_img = cv_img[:, :, ::-1]
+        
+        mask = np.zeros(cv_img.shape[:2], np.uint8)
+        bgdModel = np.zeros((1, 65), np.float64)
+        fgdModel = np.zeros((1, 65), np.float64)
+        
+        fg_rects = kwargs.get('fg_rects', [])
+        bg_rects = kwargs.get('bg_rects', [])
+        
+        # Define a bounding box slightly smaller than the image
+        margin = int(resolution * 0.05)
+        rect = (margin, margin, resolution - 2*margin, resolution - 2*margin)
+        
+        try:
+            if not fg_rects and not bg_rects:
+                cv2.grabCut(cv_img, mask, rect, bgdModel, fgdModel, 5, cv2.GC_INIT_WITH_RECT)
+            else:
+                # Initialize mask with GC_BGD everywhere
+                mask[:] = cv2.GC_BGD
+                # Make the central region PR_BGD or PR_FGD
+                mask[margin:resolution-margin, margin:resolution-margin] = cv2.GC_PR_BGD
+                
+                # We need to make sure there's at least some PR_FGD or FGD
+                if not fg_rects:
+                     mask[margin*2:resolution-margin*2, margin*2:resolution-margin*2] = cv2.GC_PR_FGD
+                     
+                for (x, y, w, h) in bg_rects:
+                    mask[y:y+h, x:x+w] = cv2.GC_BGD
+                for (x, y, w, h) in fg_rects:
+                    mask[y:y+h, x:x+w] = cv2.GC_FGD
+                    
+                cv2.grabCut(cv_img, mask, None, bgdModel, fgdModel, 5, cv2.GC_INIT_WITH_MASK)
+        except Exception as e:
+            print(f"GrabCut failed: {e}")
+            return np.zeros((resolution, resolution), dtype=bool)
+            
+        # 0 and 2 are background, 1 and 3 are foreground
+        mask2 = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
+        return mask2.astype(bool)
+
