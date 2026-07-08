@@ -7,23 +7,25 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0f172a;
-            --surface: #1e293b;
+            --bg-color:      #0f172a;
+            --surface:       #1e293b;
             --surface-hover: #334155;
-            --primary: #3b82f6;
+            --primary:       #3b82f6;
             --primary-hover: #2563eb;
-            --accent: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --warning-bg: rgba(245, 158, 11, 0.1);
-            --warning-border: rgba(245, 158, 11, 0.4);
-            --svd-color: #a78bfa;
-            --svd-bg: rgba(167, 139, 250, 0.1);
-            --svd-border: rgba(167, 139, 250, 0.4);
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --border: #475569;
+            --accent:        #10b981;
+            --danger:        #ef4444;
+            --warning:       #f59e0b;
+            --warning-bg:    rgba(245, 158, 11, 0.1);
+            --warning-border:rgba(245, 158, 11, 0.4);
+            --svd-color:     #a78bfa;
+            --svd-bg:        rgba(167, 139, 250, 0.08);
+            --svd-border:    rgba(167, 139, 250, 0.35);
+            --text-main:     #f8fafc;
+            --text-muted:    #94a3b8;
+            --border:        #475569;
         }
+
+        * { box-sizing: border-box; }
 
         body {
             font-family: 'Inter', sans-serif;
@@ -47,10 +49,7 @@
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
 
-        h1, h2, h3 {
-            margin-top: 0;
-            font-weight: 600;
-        }
+        h1, h2, h3 { margin-top: 0; font-weight: 600; }
 
         h1 {
             text-align: center;
@@ -60,18 +59,12 @@
             margin-bottom: 30px;
         }
 
-        .step-container {
-            display: none;
-            animation: fadeIn 0.5s ease-out;
-        }
-
-        .step-container.active {
-            display: block;
-        }
+        .step-container { display: none; animation: fadeIn 0.5s ease-out; }
+        .step-container.active { display: block; }
 
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            to   { opacity: 1; transform: translateY(0); }
         }
 
         .form-group {
@@ -82,20 +75,17 @@
             border: 1px solid var(--border);
         }
 
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
+        label { display: block; margin-bottom: 8px; font-weight: 500; }
 
-        input[type="file"], input[type="number"], select {
+        input[type="file"],
+        input[type="number"],
+        select {
             width: 100%;
             padding: 10px;
             border-radius: 6px;
             border: 1px solid var(--border);
             background: var(--bg-color);
             color: var(--text-main);
-            box-sizing: border-box;
         }
 
         button {
@@ -118,7 +108,9 @@
             box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
         }
 
-        /* ── SVDCodes param panel ───────────────────────────────────────── */
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* ── SVDCodes param panel ── */
         .svd-panel {
             display: none;
             margin-top: 14px;
@@ -129,835 +121,868 @@
             animation: fadeIn 0.3s ease-out;
         }
 
-        .svd-panel label {
-            color: var(--svd-color);
-            font-size: 0.85rem;
+        .svd-panel label { color: var(--svd-color); font-size: 0.85rem; }
+        .svd-panel input[type="number"], .svd-panel select { border-color: var(--svd-border); }
+
+        .svd-title {
+            font-size: 0.8rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.07em;
+            color: var(--svd-color); margin-bottom: 12px;
         }
 
-        .svd-panel input[type="number"],
-        .svd-panel select {
-            border-color: var(--svd-border);
-        }
+        .svd-param-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
 
-        .svd-panel .svd-title {
-            font-size: 0.8rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.07em;
-            color: var(--svd-color);
-            margin-bottom: 12px;
-        }
-
-        /* Warning about alpha range */
         .alpha-warning {
             display: none;
-            margin-top: 6px;
-            padding: 8px 10px;
-            border-radius: 6px;
-            background: var(--warning-bg);
-            border: 1px solid var(--warning-border);
-            color: var(--warning);
-            font-size: 0.78rem;
-            line-height: 1.4;
+            margin-top: 6px; padding: 8px 10px; border-radius: 6px;
+            background: var(--warning-bg); border: 1px solid var(--warning-border);
+            color: var(--warning); font-size: 0.78rem; line-height: 1.4;
         }
 
-        /* ── Workspace layout ───────────────────────────────────────────── */
-        .workspace {
-            display: grid;
-            grid-template-columns: 1fr 300px;
-            gap: 30px;
-        }
+        /* ── Workspace layout ── */
+        .workspace { display: grid; grid-template-columns: 1fr 300px; gap: 30px; }
+        @media (max-width: 900px) { .workspace { grid-template-columns: 1fr; } }
 
-        @media (max-width: 900px) {
-            .workspace { grid-template-columns: 1fr; }
-        }
-
-        .canvas-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 30px;
-        }
+        .canvas-grid { display: flex; flex-direction: column; gap: 30px; }
 
         .canvas-wrapper {
-            background: var(--surface);
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-            position: relative;
+            background: var(--surface); padding: 20px; border-radius: 12px;
+            text-align: center; position: relative;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .comparison-container {
-            display: flex;
-            flex-direction: row;
-            justify-content: center;
-            gap: 30px;
-            margin-top: 15px;
-        }
-        
-        .comparison-container > div {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: auto;
+            display: flex; flex-direction: row;
+            justify-content: center; gap: 30px; margin-top: 15px;
         }
 
+        .comparison-container > div { display: flex; flex-direction: column; align-items: center; }
+
         .comparison-container h4 {
-            margin: 0 0 10px 0;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            font-weight: 600;
+            margin: 0 0 10px 0; font-size: 0.85rem;
+            color: var(--text-muted); text-transform: uppercase;
+            letter-spacing: 0.05em; font-weight: 600;
         }
 
         canvas {
-            max-width: 100%;
-            border-radius: 4px;
-            cursor: crosshair;
-            border: 1px solid var(--border);
-        }
-        
-        .hint {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            margin-bottom: 15px;
+            max-width: 100%; border-radius: 4px;
+            cursor: crosshair; border: 1px solid var(--border);
         }
 
-        .sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
+        .hint { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 15px; }
+
+        .sidebar { display: flex; flex-direction: column; gap: 20px; }
 
         .result-box {
             background: rgba(16, 185, 129, 0.1);
             border: 1px solid var(--accent);
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
+            padding: 20px; border-radius: 8px; text-align: center;
         }
 
-        .volume-text {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--accent);
-            margin: 10px 0;
-        }
+        .volume-text { font-size: 2rem; font-weight: 700; color: var(--accent); margin: 10px 0; }
 
         .toggle-group {
-            display: flex;
-            gap: 10px;
-            background: var(--bg-color);
-            padding: 5px;
-            border-radius: 8px;
+            display: flex; gap: 10px;
+            background: var(--bg-color); padding: 5px; border-radius: 8px;
         }
 
         .toggle-btn {
-            flex: 1;
-            padding: 10px;
-            text-align: center;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            border: 1px solid transparent;
-            transition: 0.2s;
-            margin: 0;
-            background: transparent;
-            color: var(--text-muted);
+            flex: 1; padding: 10px; text-align: center; border-radius: 6px;
+            cursor: pointer; font-weight: 600; border: 1px solid transparent;
+            transition: 0.2s; margin: 0; background: transparent; color: var(--text-muted);
         }
 
-        .toggle-btn.active-fg {
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--accent);
-            border-color: var(--accent);
-        }
+        .toggle-btn.active-fg { background: rgba(16, 185, 129, 0.2); color: var(--accent); border-color: var(--accent); }
+        .toggle-btn.active-bg { background: rgba(239, 68, 68, 0.2); color: var(--danger); border-color: var(--danger); }
 
-        .toggle-btn.active-bg {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--danger);
-            border-color: var(--danger);
-        }
-
-        /* ── SVD Colour Preview section ─────────────────────────────────── */
-        #svdPreviewSection {
+        /* ── SVD Cluster Explorer ── */
+        #svdClusterExplorer {
             display: none;
             margin-top: 30px;
-            padding: 20px;
-            background: var(--svd-bg);
             border: 1px solid var(--svd-border);
             border-radius: 12px;
+            overflow: hidden;
             animation: fadeIn 0.4s ease-out;
         }
 
-        #svdPreviewSection h3 {
+        .cluster-explorer-header {
+            background: var(--svd-bg);
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--svd-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .cluster-explorer-header h3 {
+            margin: 0;
             color: var(--svd-color);
-            margin-bottom: 6px;
-            font-size: 1rem;
+            font-size: 0.95rem;
             text-transform: uppercase;
             letter-spacing: 0.06em;
         }
 
-        #svdPreviewSection p {
-            font-size: 0.82rem;
+        .cluster-explorer-header p {
+            margin: 0;
+            font-size: 0.8rem;
             color: var(--text-muted);
-            margin: 0 0 16px 0;
         }
 
-        .svd-preview-grid {
+        .cluster-view-section { border-bottom: 1px solid var(--svd-border); }
+        .cluster-view-section:last-of-type { border-bottom: none; }
+
+        .cluster-view-label {
+            padding: 10px 20px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: var(--svd-color);
+            background: rgba(167, 139, 250, 0.04);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .cluster-select-all {
+            font-size: 0.72rem; font-weight: 600;
+            color: var(--text-muted); cursor: pointer;
+            background: none; border: 1px solid var(--border);
+            border-radius: 4px; padding: 2px 8px;
+            width: auto; margin: 0; transition: 0.15s;
+        }
+        .cluster-select-all:hover { color: var(--text-main); border-color: var(--svd-border); }
+
+        .cluster-grid {
             display: flex;
             flex-wrap: wrap;
-            gap: 20px;
-            justify-content: center;
+            gap: 12px;
+            padding: 16px 20px;
         }
 
-        .svd-preview-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
+        /* Individual cluster card */
+        .cluster-card {
+            position: relative;
+            cursor: pointer;
+            border-radius: 8px;
+            border: 2px solid var(--border);
+            overflow: hidden;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            width: 96px;
+            background: #000;
+            user-select: none;
         }
 
-        .svd-preview-item span {
-            font-size: 0.78rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--svd-color);
+        .cluster-card:hover { border-color: var(--svd-color); }
+
+        .cluster-card.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
         }
 
-        .svd-preview-item img {
-            width: 256px;
-            max-width: 100%;
-            border-radius: 6px;
-            border: 1px solid var(--svd-border);
+        .cluster-card img {
+            display: block;
+            width: 96px;
+            height: 96px;
+            object-fit: cover;
         }
 
-        /* Loading spinner for previews */
-        .svd-preview-loading {
-            width: 256px;
-            height: 80px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .cluster-card .cluster-check {
+            position: absolute;
+            top: 5px; right: 5px;
+            width: 18px; height: 18px;
+            border-radius: 4px;
+            border: 2px solid rgba(255,255,255,0.7);
+            background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px;
+            color: var(--accent);
+            transition: background 0.15s;
+        }
+
+        .cluster-card.selected .cluster-check {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #000;
+        }
+
+        .cluster-card .cluster-caption {
+            padding: 5px 6px;
+            font-size: 0.68rem;
             color: var(--text-muted);
-            font-size: 0.85rem;
+            line-height: 1.3;
+            background: rgba(15, 23, 42, 0.85);
+        }
+
+        .cluster-caption .swatch {
+            display: inline-block;
+            width: 8px; height: 8px;
+            border-radius: 2px;
+            margin-right: 3px;
+            vertical-align: middle;
+        }
+
+        .cluster-loading {
+            padding: 20px; color: var(--text-muted);
+            font-size: 0.85rem; font-style: italic;
+        }
+
+        /* Compute button row */
+        .cluster-compute-row {
+            padding: 16px 20px;
+            background: var(--svd-bg);
+            border-top: 1px solid var(--svd-border);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        #btnComputeFromClusters {
+            width: auto;
+            margin: 0;
+            padding: 10px 22px;
+            font-size: 0.9rem;
+            background: var(--accent);
+        }
+
+        #btnComputeFromClusters:hover { background: #059669; }
+
+        .cluster-status {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-style: italic;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Plant Volume Estimator Pro</h1>
+<div class="container">
+    <h1>Plant Volume Estimator Pro</h1>
 
-        <!-- STEP 1: UPLOAD -->
-        <div id="step1" class="step-container active">
-            <h2>Step 1: Upload Images</h2>
-            <form id="uploadForm">
-                <div class="form-group">
-                    <label>XY Axis Photo</label>
-                    <input type="file" id="photo_xy" accept="image/jpeg, image/png" required>
+    <!-- ── STEP 1: UPLOAD ───────────────────────────────────────────────── -->
+    <div id="step1" class="step-container active">
+        <h2>Step 1: Upload Images</h2>
+        <form id="uploadForm">
+            <div class="form-group">
+                <label>XY Axis Photo</label>
+                <input type="file" id="photo_xy" accept="image/jpeg, image/png" required>
+            </div>
+            <div class="form-group">
+                <label>YZ Axis Photo</label>
+                <input type="file" id="photo_yz" accept="image/jpeg, image/png" required>
+            </div>
+            <div class="form-group">
+                <label>XZ Axis Photo</label>
+                <input type="file" id="photo_xz" accept="image/jpeg, image/png" required>
+            </div>
+
+            <div class="form-group">
+                <label for="uploadStrategySelect">Segmentation Algorithm</label>
+                <select id="uploadStrategySelect" onchange="toggleSvdPanel('upload')">
+                    <option value="hsv">HSV Threshold (Fast &amp; Simple)</option>
+                    <option value="grabcut">GrabCut (Automated CV)</option>
+                    <option value="svdcodes">SVDCodes (SVD-based clustering)</option>
+                </select>
+
+                <div id="svdPanelUpload" class="svd-panel">
+                    <div class="svd-title">⬡ SVDCodes Parameters</div>
+                    <div class="svd-param-row">
+                        <div>
+                            <label for="uploadSvdAlpha">Alpha (1–255)</label>
+                            <input type="number" id="uploadSvdAlpha" min="1" max="255" value="16"
+                                   oninput="checkAlphaWarning('uploadSvdAlpha','uploadAlphaWarn')">
+                            <div id="uploadAlphaWarn" class="alpha-warning">
+                                ⚠ Recommended range: <strong>8 – 64</strong>.
+                            </div>
+                        </div>
+                        <div>
+                            <label for="uploadSvdPct">Min. cluster size (%)</label>
+                            <input type="number" id="uploadSvdPct" min="0.1" max="50" step="0.1" value="1.0">
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>YZ Axis Photo</label>
-                    <input type="file" id="photo_yz" accept="image/jpeg, image/png" required>
-                </div>
-                <div class="form-group">
-                    <label>XZ Axis Photo</label>
-                    <input type="file" id="photo_xz" accept="image/jpeg, image/png" required>
+            </div>
+
+            <button type="submit" id="btnUpload">Process &amp; Calculate Volume</button>
+        </form>
+    </div>
+
+    <!-- ── WORKSPACE ────────────────────────────────────────────────────── -->
+    <div id="workspace" class="step-container">
+        <div class="workspace">
+
+            <!-- Main content column -->
+            <div class="main-content">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h2>Segmentation Workspace</h2>
+                    <button onclick="location.reload()" style="width:auto; margin:0; background:var(--surface-hover);">Start Over</button>
                 </div>
 
-                <!-- Upload-time strategy selector -->
+                <p class="hint">Draw rectangles on the images to help GrabCut identify plant vs background. For SVDCodes, use the cluster explorer below.</p>
+
+                <div class="canvas-grid">
+                    <div class="canvas-wrapper">
+                        <h3>XY View</h3>
+                        <div class="comparison-container">
+                            <div><h4>Original &amp; Edit</h4><canvas id="canvas_xy"></canvas></div>
+                            <div><h4>Generated Mask</h4><canvas id="canvas_mask_xy"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="canvas-wrapper">
+                        <h3>YZ View</h3>
+                        <div class="comparison-container">
+                            <div><h4>Original &amp; Edit</h4><canvas id="canvas_yz"></canvas></div>
+                            <div><h4>Generated Mask</h4><canvas id="canvas_mask_yz"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="canvas-wrapper">
+                        <h3>XZ View</h3>
+                        <div class="comparison-container">
+                            <div><h4>Original &amp; Edit</h4><canvas id="canvas_xz"></canvas></div>
+                            <div><h4>Generated Mask</h4><canvas id="canvas_mask_xz"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── SVD Cluster Explorer ─────────────────────────────── -->
+                <div id="svdClusterExplorer">
+                    <div class="cluster-explorer-header">
+                        <div>
+                            <h3>SVD Cluster Explorer</h3>
+                            <p>Check / uncheck clusters to include in volume computation. Original image pixels shown per cluster.</p>
+                        </div>
+                    </div>
+
+                    <!-- Per-view cluster grids (populated by JS) -->
+                    <div class="cluster-view-section">
+                        <div class="cluster-view-label">
+                            XY View
+                            <button class="cluster-select-all" onclick="selectAllClusters('xy', true)">All</button>
+                            <button class="cluster-select-all" onclick="selectAllClusters('xy', false)">None</button>
+                        </div>
+                        <div id="clusterGrid_xy" class="cluster-grid">
+                            <div class="cluster-loading">No clusters loaded.</div>
+                        </div>
+                    </div>
+                    <div class="cluster-view-section">
+                        <div class="cluster-view-label">
+                            YZ View
+                            <button class="cluster-select-all" onclick="selectAllClusters('yz', true)">All</button>
+                            <button class="cluster-select-all" onclick="selectAllClusters('yz', false)">None</button>
+                        </div>
+                        <div id="clusterGrid_yz" class="cluster-grid">
+                            <div class="cluster-loading">No clusters loaded.</div>
+                        </div>
+                    </div>
+                    <div class="cluster-view-section">
+                        <div class="cluster-view-label">
+                            XZ View
+                            <button class="cluster-select-all" onclick="selectAllClusters('xz', true)">All</button>
+                            <button class="cluster-select-all" onclick="selectAllClusters('xz', false)">None</button>
+                        </div>
+                        <div id="clusterGrid_xz" class="cluster-grid">
+                            <div class="cluster-loading">No clusters loaded.</div>
+                        </div>
+                    </div>
+
+                    <div class="cluster-compute-row">
+                        <button id="btnComputeFromClusters" onclick="computeVolumeFromSelection()">
+                            Compute Volume from Selection
+                        </button>
+                        <span id="clusterStatus" class="cluster-status"></span>
+                    </div>
+                </div>
+                <!-- end SVD Cluster Explorer -->
+
+            </div>
+            <!-- end main-content -->
+
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="result-box">
+                    <p>Estimated Volume</p>
+                    <div class="volume-text"><span id="volumeOutput">0.000000</span> m³</div>
+                </div>
+
                 <div class="form-group">
-                    <label for="uploadStrategySelect">Segmentation Algorithm</label>
-                    <select id="uploadStrategySelect" onchange="toggleSvdPanel('upload')">
+                    <label for="strategySelect">Base Algorithm</label>
+                    <select id="strategySelect" onchange="toggleSvdPanel('workspace')">
                         <option value="hsv">HSV Threshold (Fast &amp; Simple)</option>
-                        <option value="grabcut">GrabCut (Automated CV)</option>
+                        <option value="grabcut" selected>GrabCut (Automated CV)</option>
                         <option value="svdcodes">SVDCodes (SVD-based clustering)</option>
                     </select>
 
-                    <!-- SVDCodes params for upload form -->
-                    <div id="svdPanelUpload" class="svd-panel">
+                    <div id="svdPanelWorkspace" class="svd-panel">
                         <div class="svd-title">⬡ SVDCodes Parameters</div>
-
-                        <label for="uploadSvdAlpha">Alpha (quantisation granularity, 1–255)</label>
-                        <input type="number" id="uploadSvdAlpha" min="1" max="255" value="16"
-                               oninput="checkAlphaWarning('uploadSvdAlpha', 'uploadAlphaWarning')">
-                        <div id="uploadAlphaWarning" class="alpha-warning">
-                            ⚠ For best results, keep Alpha between <strong>8 and 64</strong>.
-                            Very low values over-merge segments; very high values create noise.
+                        <div class="svd-param-row">
+                            <div>
+                                <label for="workspaceSvdAlpha">Alpha (1–255)</label>
+                                <input type="number" id="workspaceSvdAlpha" min="1" max="255" value="16"
+                                       oninput="checkAlphaWarning('workspaceSvdAlpha','workspaceAlphaWarn')">
+                                <div id="workspaceAlphaWarn" class="alpha-warning">
+                                    ⚠ Recommended: <strong>8 – 64</strong>.
+                                </div>
+                            </div>
+                            <div>
+                                <label for="workspaceSvdPct">Min. cluster size (%)</label>
+                                <input type="number" id="workspaceSvdPct" min="0.1" max="50" step="0.1" value="1.0">
+                            </div>
                         </div>
-
-                        <label for="uploadSvdViewType" style="margin-top:12px;">Output mode</label>
-                        <select id="uploadSvdViewType">
-                            <option value="segments">Segments (flat colour regions)</option>
-                            <option value="mosaic view">Mosaic view (stacked segment panels)</option>
-                        </select>
                     </div>
+
+                    <button id="btnRegenerate" style="margin-top:15px;">Re-run Algorithm</button>
                 </div>
 
-                <button type="submit" id="btnUpload">Process &amp; Calculate Volume</button>
-            </form>
-        </div>
-
-        <!-- UNIFIED WORKSPACE -->
-        <div id="workspace" class="step-container">
-            <div class="workspace">
-                <div class="main-content">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h2>Segmentation Workspace</h2>
-                        <button onclick="location.reload()" style="width: auto; margin: 0; background: var(--surface-hover);">Start Over</button>
+                <div class="form-group">
+                    <label>Interactive Refinement Tool</label>
+                    <div class="toggle-group">
+                        <button class="toggle-btn active-fg" id="toolFg">Select Plant<br>(Foreground)</button>
+                        <button class="toggle-btn" id="toolBg">Select Space<br>(Background)</button>
                     </div>
-                    
-                    <p class="hint">Draw rectangles on the images to help the algorithm identify plant (foreground) vs empty space (background). The volume will update automatically.</p>
-                    
-                    <div class="canvas-grid">
-                        <div class="canvas-wrapper">
-                            <h3>XY View</h3>
-                            <div class="comparison-container">
-                                <div>
-                                    <h4>Original &amp; Edit</h4>
-                                    <canvas id="canvas_xy"></canvas>
-                                </div>
-                                <div>
-                                    <h4>Generated Mask</h4>
-                                    <canvas id="canvas_mask_xy"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="canvas-wrapper">
-                            <h3>YZ View</h3>
-                            <div class="comparison-container">
-                                <div>
-                                    <h4>Original &amp; Edit</h4>
-                                    <canvas id="canvas_yz"></canvas>
-                                </div>
-                                <div>
-                                    <h4>Generated Mask</h4>
-                                    <canvas id="canvas_mask_yz"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="canvas-wrapper">
-                            <h3>XZ View</h3>
-                            <div class="comparison-container">
-                                <div>
-                                    <h4>Original &amp; Edit</h4>
-                                    <canvas id="canvas_xz"></canvas>
-                                </div>
-                                <div>
-                                    <h4>Generated Mask</h4>
-                                    <canvas id="canvas_mask_xz"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- SVD Colour Preview Section (shown only when SVDCodes is active) -->
-                    <div id="svdPreviewSection">
-                        <h3>SVD Colour Cluster Preview</h3>
-                        <p>Colour-coded segments produced by the SVDCodes algorithm — each colour represents one cluster of pixels sharing the same SVD code.</p>
-                        <div class="svd-preview-grid">
-                            <div class="svd-preview-item">
-                                <span>XY</span>
-                                <div id="svdPreview_xy" class="svd-preview-loading">Loading…</div>
-                            </div>
-                            <div class="svd-preview-item">
-                                <span>YZ</span>
-                                <div id="svdPreview_yz" class="svd-preview-loading">Loading…</div>
-                            </div>
-                            <div class="svd-preview-item">
-                                <span>XZ</span>
-                                <div id="svdPreview_xz" class="svd-preview-loading">Loading…</div>
-                            </div>
-                        </div>
-                    </div>
+                    <button id="btnClearHints" style="margin-top:15px; background:var(--surface-hover);">Clear Hints</button>
                 </div>
 
-                <div class="sidebar">
-                    <div class="result-box">
-                        <p>Estimated Volume</p>
-                        <div class="volume-text"><span id="volumeOutput">0.000000</span> m³</div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="strategySelect">Base Algorithm</label>
-                        <select id="strategySelect" onchange="toggleSvdPanel('workspace')">
-                            <option value="hsv">HSV Threshold (Fast &amp; Simple)</option>
-                            <option value="grabcut" selected>GrabCut (Automated CV)</option>
-                            <option value="svdcodes">SVDCodes (SVD-based clustering)</option>
-                        </select>
-
-                        <!-- SVDCodes params for the workspace re-run panel -->
-                        <div id="svdPanelWorkspace" class="svd-panel">
-                            <div class="svd-title">⬡ SVDCodes Parameters</div>
-
-                            <label for="workspaceSvdAlpha">Alpha (quantisation granularity, 1–255)</label>
-                            <input type="number" id="workspaceSvdAlpha" min="1" max="255" value="16"
-                                   oninput="checkAlphaWarning('workspaceSvdAlpha', 'workspaceAlphaWarning')">
-                            <div id="workspaceAlphaWarning" class="alpha-warning">
-                                ⚠ For best results, keep Alpha between <strong>8 and 64</strong>.
-                                Very low values over-merge segments; very high values create noise.
-                            </div>
-
-                            <label for="workspaceSvdViewType" style="margin-top:12px;">Output mode</label>
-                            <select id="workspaceSvdViewType">
-                                <option value="segments">Segments (flat colour regions)</option>
-                                <option value="mosaic view">Mosaic view (stacked segment panels)</option>
-                            </select>
-                        </div>
-
-                        <button id="btnRegenerate" style="margin-top: 15px;">Re-run Algorithm</button>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Interactive Refinement Tool</label>
-                        <div class="toggle-group">
-                            <button class="toggle-btn active-fg" id="toolFg">Select Plant<br>(Foreground)</button>
-                            <button class="toggle-btn" id="toolBg">Select Space<br>(Background)</button>
-                        </div>
-                        <button id="btnClearHints" style="margin-top: 15px; background: var(--surface-hover);">Clear Hints</button>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Camera Focal Length (mm)</label>
-                        <input type="number" id="focal_length" step="0.1" value="50.0">
-                        <p class="hint" style="margin-top: 5px;">Auto-extracted from EXIF. Update and recalculate if incorrect.</p>
-                        <button id="btnRecalculate">Recalculate Volume</button>
-                    </div>
+                <div class="form-group">
+                    <label>Camera Focal Length (mm)</label>
+                    <input type="number" id="focal_length" step="0.1" value="50.0">
+                    <p class="hint" style="margin-top:5px;">Auto-extracted from EXIF. Update and recalculate if incorrect.</p>
+                    <button id="btnRecalculate">Recalculate Volume</button>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <script>
-        // ── State ─────────────────────────────────────────────────────────────
-        let currentRunId = null;
-        let currentHintMode = 'fg'; // 'fg' or 'bg'
-        
-        let imagesData = { xy: null, yz: null, xz: null };
-        let masksData  = { xy: null, yz: null, xz: null };
-        let hints = { 
-            xy: { fg: [], bg: [] }, 
-            yz: { fg: [], bg: [] }, 
-            xz: { fg: [], bg: [] } 
-        };
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentRunId   = null;
+let currentHintMode = 'fg';
 
-        // ── SVDCodes UI helpers ───────────────────────────────────────────────
+let imagesData = { xy: null, yz: null, xz: null };
+let masksData  = { xy: null, yz: null, xz: null };
+let hints      = { xy: { fg:[], bg:[] }, yz: { fg:[], bg:[] }, xz: { fg:[], bg:[] } };
 
-        /**
-         * Show/hide the SVDCodes parameter panel for the given context
-         * ('upload' or 'workspace').
-         */
-        function toggleSvdPanel(context) {
-            const selectId = context === 'upload' ? 'uploadStrategySelect' : 'strategySelect';
-            const panelId  = context === 'upload' ? 'svdPanelUpload'       : 'svdPanelWorkspace';
-            const isSvd = document.getElementById(selectId).value === 'svdcodes';
-            document.getElementById(panelId).style.display = isSvd ? 'block' : 'none';
+// Track per-view cluster selection: { xy: Set<code>, yz: Set<code>, xz: Set<code> }
+let clusterSelection = { xy: new Set(), yz: new Set(), xz: new Set() };
 
-            // Only the workspace context drives the preview section visibility
-            if (context === 'workspace') {
-                if (!isSvd) document.getElementById('svdPreviewSection').style.display = 'none';
-            }
+// ── SVDCodes UI helpers ────────────────────────────────────────────────────────
+
+function toggleSvdPanel(context) {
+    const selectId = context === 'upload' ? 'uploadStrategySelect' : 'strategySelect';
+    const panelId  = context === 'upload' ? 'svdPanelUpload'       : 'svdPanelWorkspace';
+    const isSvd    = document.getElementById(selectId).value === 'svdcodes';
+    document.getElementById(panelId).style.display = isSvd ? 'block' : 'none';
+    if (context === 'workspace') {
+        document.getElementById('svdClusterExplorer').style.display = isSvd ? 'block' : 'none';
+    }
+}
+
+function checkAlphaWarning(inputId, warnId) {
+    const val = parseInt(document.getElementById(inputId).value, 10);
+    document.getElementById(warnId).style.display =
+        (isNaN(val) || val < 8 || val > 64) ? 'block' : 'none';
+}
+
+// ── Cluster Explorer ──────────────────────────────────────────────────────────
+
+/**
+ * Build the three cluster grids from the clusters object returned by the API.
+ * clusters = { xy: [...], yz: [...], xz: [...] }
+ * All clusters start selected.
+ */
+function renderClusterExplorer(clusters) {
+    clusterSelection = { xy: new Set(), yz: new Set(), xz: new Set() };
+    ['xy', 'yz', 'xz'].forEach(view => {
+        const grid = document.getElementById(`clusterGrid_${view}`);
+        grid.innerHTML = '';
+        const viewClusters = clusters[view] || [];
+
+        if (viewClusters.length === 0) {
+            grid.innerHTML = '<div class="cluster-loading">No clusters above threshold.</div>';
+            return;
         }
 
-        /**
-         * Show a warning when alpha is outside the recommended 8-64 range.
-         */
-        function checkAlphaWarning(inputId, warningId) {
-            const val = parseInt(document.getElementById(inputId).value, 10);
-            const warn = document.getElementById(warningId);
-            const outOfRange = isNaN(val) || val < 8 || val > 64;
-            warn.style.display = outOfRange ? 'block' : 'none';
-        }
+        viewClusters.forEach(cl => {
+            clusterSelection[view].add(cl.code);
 
-        // ── SVD Colour Preview ────────────────────────────────────────────────
+            const card = document.createElement('div');
+            card.className = 'cluster-card selected';
+            card.dataset.code = cl.code;
+            card.dataset.view = view;
 
-        /**
-         * Set a preview cell: replace the loading placeholder with an <img>.
-         */
-        function setSvdPreviewImg(view, url) {
-            const container = document.getElementById(`svdPreview_${view}`);
-            container.className = 'svd-preview-item'; // remove loading class
-            container.innerHTML = `<img src="${url}" alt="SVD colour preview ${view.toUpperCase()}">`;
-        }
+            const [r, g, b] = cl.rep_color;
+            card.innerHTML = `
+                <img src="${cl.thumbnail_url}" alt="Cluster ${cl.code}" loading="lazy">
+                <div class="cluster-check">✓</div>
+                <div class="cluster-caption">
+                    <span class="swatch" style="background:rgb(${r},${g},${b})"></span>
+                    #${cl.code} &middot; ${cl.pct_total}%
+                </div>`;
 
-        function resetSvdPreviewLoading() {
-            ['xy', 'yz', 'xz'].forEach(view => {
-                const container = document.getElementById(`svdPreview_${view}`);
-                container.className = 'svd-preview-loading';
-                container.innerHTML = 'Loading…';
-            });
-        }
-
-        /**
-         * Fetch /api/svd-preview for one view and update the UI.
-         */
-        async function fetchSvdPreview(view, alpha, viewType) {
-            try {
-                const response = await fetch('/api/svd-preview', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        run_id: currentRunId,
-                        view: view,
-                        alpha: alpha,
-                        view_type: viewType,
-                    })
-                });
-                const data = await response.json();
-                if (response.ok) setSvdPreviewImg(view, data.preview_url);
-                else console.error(`SVD preview error (${view}):`, data.detail);
-            } catch (e) {
-                console.error(`SVD preview fetch failed (${view}):`, e);
-            }
-        }
-
-        /**
-         * Load colour previews for all three views from a map of URLs
-         * (returned directly by /api/segment or /api/resegment).
-         */
-        function loadSvdPreviewsFromUrls(previewUrls) {
-            document.getElementById('svdPreviewSection').style.display = 'block';
-            resetSvdPreviewLoading();
-            ['xy', 'yz', 'xz'].forEach(view => {
-                if (previewUrls && previewUrls[view]) {
-                    setSvdPreviewImg(view, previewUrls[view]);
-                }
-            });
-        }
-
-        /**
-         * Fetch previews on-demand for all three views (used after re-run when
-         * the response already contains preview URLs).
-         */
-        async function fetchAllSvdPreviews(alpha, viewType) {
-            document.getElementById('svdPreviewSection').style.display = 'block';
-            resetSvdPreviewLoading();
-            await Promise.all(
-                ['xy', 'yz', 'xz'].map(view => fetchSvdPreview(view, alpha, viewType))
-            );
-        }
-
-        // ── Tool toggling ─────────────────────────────────────────────────────
-        document.getElementById('toolFg').addEventListener('click', (e) => {
-            currentHintMode = 'fg';
-            e.target.classList.add('active-fg');
-            document.getElementById('toolBg').classList.remove('active-bg');
+            card.addEventListener('click', () => toggleCluster(card, view, cl.code));
+            grid.appendChild(card);
         });
-        document.getElementById('toolBg').addEventListener('click', (e) => {
-            currentHintMode = 'bg';
-            e.target.classList.add('active-bg');
-            document.getElementById('toolFg').classList.remove('active-fg');
-        });
+    });
 
-        document.getElementById('btnClearHints').addEventListener('click', () => {
-            hints = { xy: { fg: [], bg: [] }, yz: { fg: [], bg: [] }, xz: { fg: [], bg: [] } };
-            Object.keys(renderers).forEach(v => renderers[v].render());
-        });
+    document.getElementById('svdClusterExplorer').style.display = 'block';
+    setClusterStatus('All clusters selected. Adjust and click "Compute Volume from Selection".');
+}
 
-        // ── Canvas Drawing and Selection ──────────────────────────────────────
-        function setupCanvas(view) {
-            const canvas = document.getElementById(`canvas_${view}`);
-            const ctx = canvas.getContext('2d');
-            const maskCanvas = document.getElementById(`canvas_mask_${view}`);
-            const maskCtx = maskCanvas.getContext('2d');
-            
-            let isDrawing = false;
-            let startX, startY;
-            let currentX, currentY;
+function toggleCluster(card, view, code) {
+    if (clusterSelection[view].has(code)) {
+        clusterSelection[view].delete(code);
+        card.classList.remove('selected');
+        card.querySelector('.cluster-check').textContent = '';
+    } else {
+        clusterSelection[view].add(code);
+        card.classList.add('selected');
+        card.querySelector('.cluster-check').textContent = '✓';
+    }
+}
 
-            function render() {
-                if (!imagesData[view]) return;
-                
-                const img = imagesData[view];
-                const mask = masksData[view];
-                
-                // Fixed display width, proportional height
-                const displayWidth = 280; 
-                const scale = displayWidth / img.width;
-                const displayHeight = img.height * scale;
-                
-                canvas.width = displayWidth;
-                canvas.height = displayHeight;
-                maskCanvas.width = displayWidth;
-                maskCanvas.height = displayHeight;
-
-                // Draw base image
-                ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
-
-                // Draw mask as green overlay
-                if (mask) {
-                    ctx.globalAlpha = 0.5;
-                    const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = displayWidth;
-                    tempCanvas.height = displayHeight;
-                    const tempCtx = tempCanvas.getContext('2d');
-                    tempCtx.drawImage(mask, 0, 0, displayWidth, displayHeight);
-                    tempCtx.globalCompositeOperation = "source-in";
-                    tempCtx.fillStyle = "#10b981"; // Green
-                    tempCtx.fillRect(0, 0, displayWidth, displayHeight);
-                    ctx.drawImage(tempCanvas, 0, 0);
-                    ctx.globalAlpha = 1.0;
-
-                    // Draw the raw mask
-                    maskCtx.drawImage(mask, 0, 0, displayWidth, displayHeight);
-                } else {
-                    maskCtx.clearRect(0, 0, displayWidth, displayHeight);
-                }
-
-                // Draw accumulated hints
-                ctx.lineWidth = 2;
-                hints[view].fg.forEach(rect => {
-                    ctx.strokeStyle = 'rgba(16, 185, 129, 0.8)'; // Green
-                    ctx.strokeRect(rect.x * scale, rect.y * scale, rect.w * scale, rect.h * scale);
-                });
-                hints[view].bg.forEach(rect => {
-                    ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)'; // Red
-                    ctx.strokeRect(rect.x * scale, rect.y * scale, rect.w * scale, rect.h * scale);
-                });
-                
-                // Draw current dragging selection
-                if (isDrawing) {
-                    ctx.strokeStyle = currentHintMode === 'fg' ? '#10b981' : '#ef4444';
-                    ctx.setLineDash([5, 5]);
-                    ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
-                    ctx.setLineDash([]);
-                }
-            }
-
-            canvas.addEventListener('mousedown', (e) => {
-                isDrawing = true;
-                const rect = canvas.getBoundingClientRect();
-                startX = e.clientX - rect.left;
-                startY = e.clientY - rect.top;
-                currentX = startX;
-                currentY = startY;
-            });
-
-            canvas.addEventListener('mousemove', (e) => {
-                if (!isDrawing) return;
-                const rect = canvas.getBoundingClientRect();
-                currentX = e.clientX - rect.left;
-                currentY = e.clientY - rect.top;
-                render(); 
-            });
-
-            canvas.addEventListener('mouseup', async (e) => {
-                if (!isDrawing) return;
-                isDrawing = false;
-                const rect = canvas.getBoundingClientRect();
-                const endX = e.clientX - rect.left;
-                const endY = e.clientY - rect.top;
-
-                const x = Math.min(startX, endX);
-                const y = Math.min(startY, endY);
-                const w = Math.abs(endX - startX);
-                const h = Math.abs(endY - startY);
-
-                if (w > 5 && h > 5) {
-                    const img = imagesData[view];
-                    const scale = img.width / 280; // transform back to original image space
-                    const origRect = {
-                        x: Math.round(x * scale),
-                        y: Math.round(y * scale),
-                        w: Math.round(w * scale),
-                        h: Math.round(h * scale)
-                    };
-                    
-                    hints[view][currentHintMode].push(origRect);
-                    render();
-                    await updateMask(view);
-                } else {
-                    render();
-                }
-            });
-
-            return { render };
+function selectAllClusters(view, select) {
+    const grid = document.getElementById(`clusterGrid_${view}`);
+    grid.querySelectorAll('.cluster-card').forEach(card => {
+        const code = parseInt(card.dataset.code, 10);
+        if (select) {
+            clusterSelection[view].add(code);
+            card.classList.add('selected');
+            card.querySelector('.cluster-check').textContent = '✓';
+        } else {
+            clusterSelection[view].delete(code);
+            card.classList.remove('selected');
+            card.querySelector('.cluster-check').textContent = '';
         }
+    });
+}
 
-        const renderers = {
-            xy: setupCanvas('xy'),
-            yz: setupCanvas('yz'),
-            xz: setupCanvas('xz')
-        };
+function setClusterStatus(msg) {
+    document.getElementById('clusterStatus').textContent = msg;
+}
 
-        function loadImage(view, url, isMask = false) {
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => {
-                    if (isMask) masksData[view] = img;
-                    else imagesData[view] = img;
-                    renderers[view].render();
-                    resolve();
-                };
-                img.src = url;
-            });
-        }
+async function computeVolumeFromSelection() {
+    const btn = document.getElementById('btnComputeFromClusters');
+    btn.disabled = true;
+    btn.textContent = 'Computing…';
+    setClusterStatus('');
 
-        function updateVolumeUI(vol) {
-            document.getElementById('volumeOutput').innerText = parseFloat(vol).toFixed(6);
-        }
+    const selectedCodes = {
+        xy: [...clusterSelection.xy],
+        yz: [...clusterSelection.yz],
+        xz: [...clusterSelection.xz],
+    };
 
-        async function updateMask(view) {
-            const focal_length = parseFloat(document.getElementById('focal_length').value);
-            
-            // Format hints into list of [x,y,w,h]
-            const fg_list = hints[view].fg.map(r => [r.x, r.y, r.w, r.h]);
-            const bg_list = hints[view].bg.map(r => [r.x, r.y, r.w, r.h]);
+    const total = selectedCodes.xy.length + selectedCodes.yz.length + selectedCodes.xz.length;
+    if (total === 0) {
+        setClusterStatus('⚠ No clusters selected — please select at least one cluster per view.');
+        btn.disabled = false;
+        btn.textContent = 'Compute Volume from Selection';
+        return;
+    }
 
-            try {
-                const response = await fetch('/api/update-mask', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        run_id: currentRunId,
-                        view: view,
-                        focal_length: focal_length,
-                        fg_rects: fg_list,
-                        bg_rects: bg_list
-                    })
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    await loadImage(view, data.mask_url, true);
-                    updateVolumeUI(data.estimated_volume_m3);
-                }
-            } catch (e) {
-                console.error("Failed to update mask", e);
-            }
-        }
+    const focal_length = parseFloat(document.getElementById('focal_length').value);
 
-        // ── Upload form handler ───────────────────────────────────────────────
-        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('btnUpload');
-            btn.innerText = "Processing...";
-            btn.disabled = true;
-
-            const strategy  = document.getElementById('uploadStrategySelect').value;
-            const alpha     = parseInt(document.getElementById('uploadSvdAlpha').value, 10) || 16;
-            const view_type = document.getElementById('uploadSvdViewType').value;
-
-            const formData = new FormData();
-            formData.append('photo_xy',  document.getElementById('photo_xy').files[0]);
-            formData.append('photo_yz',  document.getElementById('photo_yz').files[0]);
-            formData.append('photo_xz',  document.getElementById('photo_xz').files[0]);
-            formData.append('strategy',  strategy);
-            formData.append('alpha',     alpha);
-            formData.append('view_type', view_type);
-
-            try {
-                const response = await fetch('/api/segment', { method: 'POST', body: formData });
-                const data = await response.json();
-
-                if (response.ok) {
-                    currentRunId = data.run_id;
-                    document.getElementById('focal_length').value = data.focal_length.toFixed(2);
-                    updateVolumeUI(data.estimated_volume_m3);
-                    
-                    // Load images and masks
-                    await Promise.all([
-                        loadImage('xy', data.images.xy),
-                        loadImage('yz', data.images.yz),
-                        loadImage('xz', data.images.xz),
-                        loadImage('xy', data.masks.xy, true),
-                        loadImage('yz', data.masks.yz, true),
-                        loadImage('xz', data.masks.xz, true)
-                    ]);
-
-                    // Sync the workspace strategy selector with what was used on upload
-                    document.getElementById('strategySelect').value = strategy;
-                    toggleSvdPanel('workspace');
-
-                    if (strategy === 'svdcodes') {
-                        document.getElementById('workspaceSvdAlpha').value = alpha;
-                        document.getElementById('workspaceSvdViewType').value = view_type;
-                        // Load colour previews that the server already generated
-                        if (data.svd_previews) loadSvdPreviewsFromUrls(data.svd_previews);
-                    }
-
-                    document.getElementById('step1').classList.remove('active');
-                    document.getElementById('workspace').classList.add('active');
-                } else {
-                    alert("Error: " + data.detail);
-                }
-            } catch (error) {
-                alert("Failed to connect to the server.");
-            }
-            btn.innerText = "Process & Calculate Volume";
-            btn.disabled = false;
-        });
-
-        // ── Re-run algorithm handler ──────────────────────────────────────────
-        document.getElementById('btnRegenerate').addEventListener('click', async () => {
-            const btn = document.getElementById('btnRegenerate');
-            btn.innerText = "Working...";
-            btn.disabled = true;
-
-            const focal_length = parseFloat(document.getElementById('focal_length').value);
-            const strategy     = document.getElementById('strategySelect').value;
-            const alpha        = parseInt(document.getElementById('workspaceSvdAlpha').value, 10) || 16;
-            const view_type    = document.getElementById('workspaceSvdViewType').value;
-
-            const body = {
+    try {
+        const res  = await fetch('/api/compute-from-clusters', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
                 run_id: currentRunId,
-                strategy: strategy,
-                focal_length: focal_length,
-            };
+                focal_length,
+                selected_codes: selectedCodes,
+            }),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            await Promise.all([
+                loadImage('xy', data.masks.xy, true),
+                loadImage('yz', data.masks.yz, true),
+                loadImage('xz', data.masks.xz, true),
+            ]);
+            updateVolumeUI(data.estimated_volume_m3);
+            setClusterStatus(`Volume updated — ${selectedCodes.xy.length} XY · ${selectedCodes.yz.length} YZ · ${selectedCodes.xz.length} XZ clusters used.`);
+        } else {
+            setClusterStatus(`Error: ${data.detail}`);
+        }
+    } catch (e) {
+        console.error(e);
+        setClusterStatus('Connection error.');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Compute Volume from Selection';
+}
+
+// ── Tool toggling ─────────────────────────────────────────────────────────────
+document.getElementById('toolFg').addEventListener('click', e => {
+    currentHintMode = 'fg';
+    e.target.classList.add('active-fg');
+    document.getElementById('toolBg').classList.remove('active-bg');
+});
+document.getElementById('toolBg').addEventListener('click', e => {
+    currentHintMode = 'bg';
+    e.target.classList.add('active-bg');
+    document.getElementById('toolFg').classList.remove('active-fg');
+});
+
+document.getElementById('btnClearHints').addEventListener('click', () => {
+    hints = { xy:{fg:[],bg:[]}, yz:{fg:[],bg:[]}, xz:{fg:[],bg:[]} };
+    Object.keys(renderers).forEach(v => renderers[v].render());
+});
+
+// ── Canvas drawing ────────────────────────────────────────────────────────────
+function setupCanvas(view) {
+    const canvas     = document.getElementById(`canvas_${view}`);
+    const ctx        = canvas.getContext('2d');
+    const maskCanvas = document.getElementById(`canvas_mask_${view}`);
+    const maskCtx    = maskCanvas.getContext('2d');
+
+    let isDrawing = false;
+    let startX, startY, currentX, currentY;
+
+    function render() {
+        if (!imagesData[view]) return;
+        const img  = imagesData[view];
+        const mask = masksData[view];
+
+        const displayWidth  = 280;
+        const scale         = displayWidth / img.width;
+        const displayHeight = img.height * scale;
+
+        canvas.width  = displayWidth;  canvas.height  = displayHeight;
+        maskCanvas.width = displayWidth; maskCanvas.height = displayHeight;
+
+        ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
+
+        if (mask) {
+            ctx.globalAlpha = 0.5;
+            const tmp = document.createElement('canvas');
+            tmp.width = displayWidth; tmp.height = displayHeight;
+            const tCtx = tmp.getContext('2d');
+            tCtx.drawImage(mask, 0, 0, displayWidth, displayHeight);
+            tCtx.globalCompositeOperation = 'source-in';
+            tCtx.fillStyle = '#10b981';
+            tCtx.fillRect(0, 0, displayWidth, displayHeight);
+            ctx.drawImage(tmp, 0, 0);
+            ctx.globalAlpha = 1.0;
+            maskCtx.drawImage(mask, 0, 0, displayWidth, displayHeight);
+        } else {
+            maskCtx.clearRect(0, 0, displayWidth, displayHeight);
+        }
+
+        ctx.lineWidth = 2;
+        hints[view].fg.forEach(r => {
+            ctx.strokeStyle = 'rgba(16,185,129,0.8)';
+            ctx.strokeRect(r.x * scale, r.y * scale, r.w * scale, r.h * scale);
+        });
+        hints[view].bg.forEach(r => {
+            ctx.strokeStyle = 'rgba(239,68,68,0.8)';
+            ctx.strokeRect(r.x * scale, r.y * scale, r.w * scale, r.h * scale);
+        });
+
+        if (isDrawing) {
+            ctx.strokeStyle = currentHintMode === 'fg' ? '#10b981' : '#ef4444';
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+            ctx.setLineDash([]);
+        }
+    }
+
+    canvas.addEventListener('mousedown', e => {
+        isDrawing = true;
+        const r = canvas.getBoundingClientRect();
+        startX = e.clientX - r.left; startY = e.clientY - r.top;
+        currentX = startX; currentY = startY;
+    });
+
+    canvas.addEventListener('mousemove', e => {
+        if (!isDrawing) return;
+        const r = canvas.getBoundingClientRect();
+        currentX = e.clientX - r.left; currentY = e.clientY - r.top;
+        render();
+    });
+
+    canvas.addEventListener('mouseup', async e => {
+        if (!isDrawing) return;
+        isDrawing = false;
+        const r   = canvas.getBoundingClientRect();
+        const ex  = e.clientX - r.left;
+        const ey  = e.clientY - r.top;
+        const x   = Math.min(startX, ex);
+        const y   = Math.min(startY, ey);
+        const w   = Math.abs(ex - startX);
+        const h   = Math.abs(ey - startY);
+
+        if (w > 5 && h > 5) {
+            const img   = imagesData[view];
+            const scale = img.width / 280;
+            hints[view][currentHintMode].push({
+                x: Math.round(x * scale), y: Math.round(y * scale),
+                w: Math.round(w * scale), h: Math.round(h * scale),
+            });
+            render();
+            await updateMask(view);
+        } else {
+            render();
+        }
+    });
+
+    return { render };
+}
+
+const renderers = { xy: setupCanvas('xy'), yz: setupCanvas('yz'), xz: setupCanvas('xz') };
+
+function loadImage(view, url, isMask = false) {
+    return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+            if (isMask) masksData[view] = img;
+            else        imagesData[view] = img;
+            renderers[view].render();
+            resolve();
+        };
+        img.src = url;
+    });
+}
+
+function updateVolumeUI(vol) {
+    document.getElementById('volumeOutput').innerText = parseFloat(vol).toFixed(6);
+}
+
+async function updateMask(view) {
+    const focal_length = parseFloat(document.getElementById('focal_length').value);
+    const fg_list = hints[view].fg.map(r => [r.x, r.y, r.w, r.h]);
+    const bg_list = hints[view].bg.map(r => [r.x, r.y, r.w, r.h]);
+    try {
+        const res  = await fetch('/api/update-mask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ run_id: currentRunId, view, focal_length, fg_rects: fg_list, bg_rects: bg_list }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+            await loadImage(view, data.mask_url, true);
+            updateVolumeUI(data.estimated_volume_m3);
+        }
+    } catch (e) { console.error('Failed to update mask', e); }
+}
+
+// ── Upload form ───────────────────────────────────────────────────────────────
+document.getElementById('uploadForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('btnUpload');
+    btn.textContent = 'Processing…'; btn.disabled = true;
+
+    const strategy        = document.getElementById('uploadStrategySelect').value;
+    const alpha           = parseInt(document.getElementById('uploadSvdAlpha').value, 10) || 16;
+    const min_cluster_pct = parseFloat(document.getElementById('uploadSvdPct').value) || 1.0;
+
+    const fd = new FormData();
+    fd.append('photo_xy',        document.getElementById('photo_xy').files[0]);
+    fd.append('photo_yz',        document.getElementById('photo_yz').files[0]);
+    fd.append('photo_xz',        document.getElementById('photo_xz').files[0]);
+    fd.append('strategy',        strategy);
+    fd.append('alpha',           alpha);
+    fd.append('min_cluster_pct', min_cluster_pct);
+
+    try {
+        const res  = await fetch('/api/segment', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        if (res.ok) {
+            currentRunId = data.run_id;
+            document.getElementById('focal_length').value = data.focal_length.toFixed(2);
+            updateVolumeUI(data.estimated_volume_m3);
+
+            await Promise.all([
+                loadImage('xy', data.images.xy),
+                loadImage('yz', data.images.yz),
+                loadImage('xz', data.images.xz),
+                loadImage('xy', data.masks.xy, true),
+                loadImage('yz', data.masks.yz, true),
+                loadImage('xz', data.masks.xz, true),
+            ]);
+
+            // Sync workspace selector with upload choice
+            document.getElementById('strategySelect').value = strategy;
+            toggleSvdPanel('workspace');
+
             if (strategy === 'svdcodes') {
-                body.alpha     = alpha;
-                body.view_type = view_type;
+                document.getElementById('workspaceSvdAlpha').value = alpha;
+                document.getElementById('workspaceSvdPct').value   = min_cluster_pct;
+                if (data.clusters) renderClusterExplorer(data.clusters);
             }
 
-            try {
-                const response = await fetch('/api/resegment', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
+            document.getElementById('step1').classList.remove('active');
+            document.getElementById('workspace').classList.add('active');
+        } else {
+            alert('Error: ' + data.detail);
+        }
+    } catch (err) {
+        alert('Failed to connect to the server.');
+    }
 
-                const data = await response.json();
-                if (response.ok) {
-                    await Promise.all([
-                        loadImage('xy', data.masks.xy, true),
-                        loadImage('yz', data.masks.yz, true),
-                        loadImage('xz', data.masks.xz, true)
-                    ]);
-                    updateVolumeUI(data.estimated_volume_m3);
+    btn.textContent = 'Process & Calculate Volume'; btn.disabled = false;
+});
 
-                    if (strategy === 'svdcodes' && data.svd_previews) {
-                        loadSvdPreviewsFromUrls(data.svd_previews);
-                    } else {
-                        document.getElementById('svdPreviewSection').style.display = 'none';
-                    }
-                }
-            } catch (error) {
-                alert("Failed to resegment.");
-            }
-            btn.innerText = "Re-run Algorithm";
-            btn.disabled = false;
+// ── Re-run algorithm ──────────────────────────────────────────────────────────
+document.getElementById('btnRegenerate').addEventListener('click', async () => {
+    const btn = document.getElementById('btnRegenerate');
+    btn.textContent = 'Working…'; btn.disabled = true;
+
+    const strategy        = document.getElementById('strategySelect').value;
+    const focal_length    = parseFloat(document.getElementById('focal_length').value);
+    const alpha           = parseInt(document.getElementById('workspaceSvdAlpha').value, 10) || 16;
+    const min_cluster_pct = parseFloat(document.getElementById('workspaceSvdPct').value) || 1.0;
+
+    const body = { run_id: currentRunId, strategy, focal_length };
+    if (strategy === 'svdcodes') { body.alpha = alpha; body.min_cluster_pct = min_cluster_pct; }
+
+    try {
+        const res  = await fetch('/api/resegment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
         });
+        const data = await res.json();
 
-        // ── Recalculate volume handler ────────────────────────────────────────
-        document.getElementById('btnRecalculate').addEventListener('click', async () => {
-            const btn = document.getElementById('btnRecalculate');
-            btn.innerText = "Calculating...";
-            btn.disabled = true;
-            const focal_length = parseFloat(document.getElementById('focal_length').value);
-            try {
-                const response = await fetch('/api/calculate-volume', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ run_id: currentRunId, focal_length: focal_length })
-                });
-                const data = await response.json();
-                if (response.ok) updateVolumeUI(data.estimated_volume_m3);
-            } catch (e) {
-                console.error(e);
+        if (res.ok) {
+            await Promise.all([
+                loadImage('xy', data.masks.xy, true),
+                loadImage('yz', data.masks.yz, true),
+                loadImage('xz', data.masks.xz, true),
+            ]);
+            updateVolumeUI(data.estimated_volume_m3);
+
+            if (strategy === 'svdcodes' && data.clusters) {
+                renderClusterExplorer(data.clusters);
+            } else {
+                document.getElementById('svdClusterExplorer').style.display = 'none';
             }
-            btn.innerText = "Recalculate Volume";
-            btn.disabled = false;
+        }
+    } catch (err) { alert('Failed to resegment.'); }
+
+    btn.textContent = 'Re-run Algorithm'; btn.disabled = false;
+});
+
+// ── Recalculate volume (focal length change) ──────────────────────────────────
+document.getElementById('btnRecalculate').addEventListener('click', async () => {
+    const btn = document.getElementById('btnRecalculate');
+    btn.textContent = 'Calculating…'; btn.disabled = true;
+    const focal_length = parseFloat(document.getElementById('focal_length').value);
+    try {
+        const res  = await fetch('/api/calculate-volume', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ run_id: currentRunId, focal_length }),
         });
-    </script>
+        const data = await res.json();
+        if (res.ok) updateVolumeUI(data.estimated_volume_m3);
+    } catch (e) { console.error(e); }
+    btn.textContent = 'Recalculate Volume'; btn.disabled = false;
+});
+</script>
 </body>
 </html>

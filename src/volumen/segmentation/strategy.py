@@ -8,6 +8,7 @@ from volumen.svdcodes import (
     get_codes,
     get_segments,
     get_segments_mosaic_view,
+    get_cluster_masks_data,
 )
 
 class SegmentationStrategy(ABC):
@@ -213,3 +214,40 @@ class SVDCodesStrategy(SegmentationStrategy):
         if view_type == "mosaic view":
             return get_segments_mosaic_view(frame, pixels, codes)
         return get_segments(frame, pixels, codes)
+
+    def get_cluster_masks(
+        self,
+        image_path: str,
+        resolution: int,
+        alpha: int = 16,
+    ) -> tuple:
+        """
+        Run the full SVDCodes pipeline and return per-cluster data.
+
+        Parameters
+        ----------
+        image_path : str   Path to the source image.
+        resolution : int   Both width and height after resizing.
+        alpha      : int   Quantisation granularity (higher → more clusters).
+
+        Returns
+        -------
+        cluster_data : list[dict]
+            Sorted by pixel_count descending.  Each dict has:
+            ``code``, ``pixel_count``, ``rep_color``, ``mask``, ``thumbnail``.
+            See ``svdcodes.get_cluster_masks_data`` for full spec.
+        codes : np.ndarray
+            Flat uint8 array of shape ``(resolution * resolution,)``.
+            Store with ``np.save`` so ``/api/compute-from-clusters`` can
+            reconstruct binary masks without re-running SVD.
+        """
+        img = Image.open(image_path).convert("RGB")
+        img = img.resize((resolution, resolution), Image.Resampling.LANCZOS)
+        frame = np.array(img)  # (H, W, 3) uint8
+
+        pixels = get_pixels(frame)
+        h      = get_transformed_data(pixels)
+        codes  = get_codes(h, alpha)             # flat (H*W,) uint8
+
+        cluster_data = get_cluster_masks_data(frame, pixels, codes)
+        return cluster_data, codes

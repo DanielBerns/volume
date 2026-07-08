@@ -98,3 +98,56 @@ def svd_codes_segment_image(input_image, alpha_string, this_view_type):
     else:
         output_image = get_segments(input_image, pixels, codes)
     return output_image
+
+
+def get_cluster_masks_data(frame, pixels, codes):
+    """
+    Compute per-cluster data from an already-run SVDCodes pipeline.
+
+    Parameters
+    ----------
+    frame  : np.ndarray  shape (H, W, 3) uint8 — original RGB image
+    pixels : np.ndarray  shape (3, H*W)   uint8 — output of get_pixels(frame)
+    codes  : np.ndarray  shape (H*W,)     uint8 — output of get_codes(h, alpha)
+
+    Returns
+    -------
+    list of dict, sorted by pixel_count descending.  Each dict contains:
+        "code"        – int  SVD code value
+        "pixel_count" – int  number of pixels in this cluster
+        "rep_color"   – list [R, G, B] uint8  centroid-nearest representative colour
+        "mask"        – np.ndarray bool  shape (H, W)  True where code matches
+        "thumbnail"   – np.ndarray uint8 shape (H, W, 3)
+                        original RGB values for cluster pixels, 0 elsewhere
+    """
+    frame_rows, frame_cols, _ = frame.shape
+    result = []
+
+    for this_code in np.unique(codes):
+        flat_mask = codes == this_code                        # shape (H*W,)
+        pixel_count = int(flat_mask.sum())
+        if pixel_count == 0:
+            continue
+
+        # Representative colour: centroid-nearest pixel in this cluster
+        subset = pixels[:, flat_mask]                         # (3, N)
+        color_index = get_subset_color_index(subset)
+        rep_color = subset[:, color_index].tolist()           # [R, G, B]
+
+        # 2-D boolean mask
+        mask_2d = flat_mask.reshape(frame_rows, frame_cols)
+
+        # Thumbnail: original pixels where in cluster, black elsewhere
+        thumbnail = np.zeros_like(frame)
+        thumbnail[mask_2d] = frame[mask_2d]
+
+        result.append({
+            "code":        int(this_code),
+            "pixel_count": pixel_count,
+            "rep_color":   rep_color,
+            "mask":        mask_2d,
+            "thumbnail":   thumbnail,
+        })
+
+    result.sort(key=lambda x: x["pixel_count"], reverse=True)
+    return result
