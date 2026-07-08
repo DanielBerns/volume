@@ -2,6 +2,13 @@ from abc import ABC, abstractmethod
 import numpy as np
 from PIL import Image
 import cv2
+from volumen.svdcodes import (
+    get_pixels,
+    get_transformed_data,
+    get_codes,
+    get_segments,
+    get_segments_mosaic_view,
+)
 
 class SegmentationStrategy(ABC):
     @abstractmethod
@@ -119,3 +126,90 @@ class GrabCutStrategy(SegmentationStrategy):
         mask2 = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
         return mask2.astype(bool)
 
+
+class SVDCodesStrategy(SegmentationStrategy):
+    """
+    A strategy that applies the SVDCodes algorithm for image segmentation.
+
+    The algorithm works by:
+      1. Flattening the RGB channels into a pixel matrix.
+      2. Computing the top-2 principal components via SVD.
+      3. Encoding each pixel as an integer code from those components.
+      4. Grouping pixels that share the same code and colouring each group
+         with the representative (centroid-nearest) pixel of that group.
+
+    ``create_mask`` returns a boolean mask where ``True`` marks pixels that
+    belong to non-background (non-black) segments.
+
+    Accepted ``kwargs``::
+
+        alpha (int): Controls the quantisation granularity of the codes.
+            Higher values produce more segments.  Defaults to 16.
+        view_type (str): Either ``"segments"`` (default) for the flat
+            segmented image, or ``"mosaic view"`` for a multi-panel layout
+            of the largest segments stacked vertically.
+    """
+
+    def create_mask(
+        self,
+        image_path: str,
+        resolution: int,
+        **kwargs,
+    ) -> np.ndarray:
+        alpha = int(kwargs.get("alpha", 16))
+        view_type = kwargs.get("view_type", "segments")
+
+        # Load and resize to the requested resolution
+        img = Image.open(image_path).convert("RGB")
+        img = img.resize((resolution, resolution), Image.Resampling.LANCZOS)
+        frame = np.array(img)  # (H, W, 3), uint8
+
+        # Run the SVDCodes pipeline
+        pixels = get_pixels(frame)
+        h = get_transformed_data(pixels)
+        codes = get_codes(h, alpha)
+
+        if view_type == "mosaic view":
+            segmented = get_segments_mosaic_view(frame, pixels, codes)
+        else:
+            segmented = get_segments(frame, pixels, codes)
+
+        # Derive a boolean mask: pixels that are NOT completely black are
+        # considered foreground.  This gives a sensible binary mask that is
+        # compatible with the rest of the segmentation pipeline.
+        # Only use the top (resolution × resolution) slice so that a mosaic
+        # view (which may be taller) still returns the expected shape.
+        mask_frame = segmented[:resolution, :resolution, :]
+        mask = np.any(mask_frame > 0, axis=2)  # True where any channel > 0
+        return mask
+
+    def segment_image(
+        self,
+        image_path: str,
+        resolution: int,
+        **kwargs,
+    ) -> np.ndarray:
+        """
+        Returns the full segmented image array instead of a binary mask.
+
+        This is useful when you want to inspect or visualise the colour
+        segments produced by the SVDCodes algorithm directly.
+
+        Returns:
+            np.ndarray: Segmented image of shape ``(H, W, 3)`` (or taller
+            when ``view_type="mosaic view"``).
+        """
+        alpha = int(kwargs.get("alpha", 16))
+        view_type = kwargs.get("view_type", "segments")
+
+        img = Image.open(image_path).convert("RGB")
+        img = img.resize((resolution, resolution), Image.Resampling.LANCZOS)
+        frame = np.array(img)
+
+        pixels = get_pixels(frame)
+        h = get_transformed_data(pixels)
+        codes = get_codes(h, alpha)
+
+        if view_type == "mosaic view":
+            return get_segments_mosaic_view(frame, pixels, codes)
+        return get_segments(frame, pixels, codes)

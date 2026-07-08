@@ -14,6 +14,12 @@
             --primary-hover: #2563eb;
             --accent: #10b981;
             --danger: #ef4444;
+            --warning: #f59e0b;
+            --warning-bg: rgba(245, 158, 11, 0.1);
+            --warning-border: rgba(245, 158, 11, 0.4);
+            --svd-color: #a78bfa;
+            --svd-bg: rgba(167, 139, 250, 0.1);
+            --svd-border: rgba(167, 139, 250, 0.4);
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --border: #475569;
@@ -112,6 +118,50 @@
             box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
         }
 
+        /* ── SVDCodes param panel ───────────────────────────────────────── */
+        .svd-panel {
+            display: none;
+            margin-top: 14px;
+            padding: 14px;
+            border-radius: 8px;
+            background: var(--svd-bg);
+            border: 1px solid var(--svd-border);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .svd-panel label {
+            color: var(--svd-color);
+            font-size: 0.85rem;
+        }
+
+        .svd-panel input[type="number"],
+        .svd-panel select {
+            border-color: var(--svd-border);
+        }
+
+        .svd-panel .svd-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: var(--svd-color);
+            margin-bottom: 12px;
+        }
+
+        /* Warning about alpha range */
+        .alpha-warning {
+            display: none;
+            margin-top: 6px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            background: var(--warning-bg);
+            border: 1px solid var(--warning-border);
+            color: var(--warning);
+            font-size: 0.78rem;
+            line-height: 1.4;
+        }
+
+        /* ── Workspace layout ───────────────────────────────────────────── */
         .workspace {
             display: grid;
             grid-template-columns: 1fr 300px;
@@ -228,6 +278,71 @@
             color: var(--danger);
             border-color: var(--danger);
         }
+
+        /* ── SVD Colour Preview section ─────────────────────────────────── */
+        #svdPreviewSection {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: var(--svd-bg);
+            border: 1px solid var(--svd-border);
+            border-radius: 12px;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        #svdPreviewSection h3 {
+            color: var(--svd-color);
+            margin-bottom: 6px;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        #svdPreviewSection p {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin: 0 0 16px 0;
+        }
+
+        .svd-preview-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .svd-preview-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .svd-preview-item span {
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--svd-color);
+        }
+
+        .svd-preview-item img {
+            width: 256px;
+            max-width: 100%;
+            border-radius: 6px;
+            border: 1px solid var(--svd-border);
+        }
+
+        /* Loading spinner for previews */
+        .svd-preview-loading {
+            width: 256px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 <body>
@@ -250,7 +365,37 @@
                     <label>XZ Axis Photo</label>
                     <input type="file" id="photo_xz" accept="image/jpeg, image/png" required>
                 </div>
-                <button type="submit" id="btnUpload">Process & Calculate Volume</button>
+
+                <!-- Upload-time strategy selector -->
+                <div class="form-group">
+                    <label for="uploadStrategySelect">Segmentation Algorithm</label>
+                    <select id="uploadStrategySelect" onchange="toggleSvdPanel('upload')">
+                        <option value="hsv">HSV Threshold (Fast &amp; Simple)</option>
+                        <option value="grabcut">GrabCut (Automated CV)</option>
+                        <option value="svdcodes">SVDCodes (SVD-based clustering)</option>
+                    </select>
+
+                    <!-- SVDCodes params for upload form -->
+                    <div id="svdPanelUpload" class="svd-panel">
+                        <div class="svd-title">⬡ SVDCodes Parameters</div>
+
+                        <label for="uploadSvdAlpha">Alpha (quantisation granularity, 1–255)</label>
+                        <input type="number" id="uploadSvdAlpha" min="1" max="255" value="16"
+                               oninput="checkAlphaWarning('uploadSvdAlpha', 'uploadAlphaWarning')">
+                        <div id="uploadAlphaWarning" class="alpha-warning">
+                            ⚠ For best results, keep Alpha between <strong>8 and 64</strong>.
+                            Very low values over-merge segments; very high values create noise.
+                        </div>
+
+                        <label for="uploadSvdViewType" style="margin-top:12px;">Output mode</label>
+                        <select id="uploadSvdViewType">
+                            <option value="segments">Segments (flat colour regions)</option>
+                            <option value="mosaic view">Mosaic view (stacked segment panels)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" id="btnUpload">Process &amp; Calculate Volume</button>
             </form>
         </div>
 
@@ -270,7 +415,7 @@
                             <h3>XY View</h3>
                             <div class="comparison-container">
                                 <div>
-                                    <h4>Original & Edit</h4>
+                                    <h4>Original &amp; Edit</h4>
                                     <canvas id="canvas_xy"></canvas>
                                 </div>
                                 <div>
@@ -283,7 +428,7 @@
                             <h3>YZ View</h3>
                             <div class="comparison-container">
                                 <div>
-                                    <h4>Original & Edit</h4>
+                                    <h4>Original &amp; Edit</h4>
                                     <canvas id="canvas_yz"></canvas>
                                 </div>
                                 <div>
@@ -296,13 +441,33 @@
                             <h3>XZ View</h3>
                             <div class="comparison-container">
                                 <div>
-                                    <h4>Original & Edit</h4>
+                                    <h4>Original &amp; Edit</h4>
                                     <canvas id="canvas_xz"></canvas>
                                 </div>
                                 <div>
                                     <h4>Generated Mask</h4>
                                     <canvas id="canvas_mask_xz"></canvas>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SVD Colour Preview Section (shown only when SVDCodes is active) -->
+                    <div id="svdPreviewSection">
+                        <h3>SVD Colour Cluster Preview</h3>
+                        <p>Colour-coded segments produced by the SVDCodes algorithm — each colour represents one cluster of pixels sharing the same SVD code.</p>
+                        <div class="svd-preview-grid">
+                            <div class="svd-preview-item">
+                                <span>XY</span>
+                                <div id="svdPreview_xy" class="svd-preview-loading">Loading…</div>
+                            </div>
+                            <div class="svd-preview-item">
+                                <span>YZ</span>
+                                <div id="svdPreview_yz" class="svd-preview-loading">Loading…</div>
+                            </div>
+                            <div class="svd-preview-item">
+                                <span>XZ</span>
+                                <div id="svdPreview_xz" class="svd-preview-loading">Loading…</div>
                             </div>
                         </div>
                     </div>
@@ -315,11 +480,32 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Base Algorithm</label>
-                        <select id="strategySelect">
-                            <option value="hsv">HSV Threshold (Fast & Simple)</option>
+                        <label for="strategySelect">Base Algorithm</label>
+                        <select id="strategySelect" onchange="toggleSvdPanel('workspace')">
+                            <option value="hsv">HSV Threshold (Fast &amp; Simple)</option>
                             <option value="grabcut" selected>GrabCut (Automated CV)</option>
+                            <option value="svdcodes">SVDCodes (SVD-based clustering)</option>
                         </select>
+
+                        <!-- SVDCodes params for the workspace re-run panel -->
+                        <div id="svdPanelWorkspace" class="svd-panel">
+                            <div class="svd-title">⬡ SVDCodes Parameters</div>
+
+                            <label for="workspaceSvdAlpha">Alpha (quantisation granularity, 1–255)</label>
+                            <input type="number" id="workspaceSvdAlpha" min="1" max="255" value="16"
+                                   oninput="checkAlphaWarning('workspaceSvdAlpha', 'workspaceAlphaWarning')">
+                            <div id="workspaceAlphaWarning" class="alpha-warning">
+                                ⚠ For best results, keep Alpha between <strong>8 and 64</strong>.
+                                Very low values over-merge segments; very high values create noise.
+                            </div>
+
+                            <label for="workspaceSvdViewType" style="margin-top:12px;">Output mode</label>
+                            <select id="workspaceSvdViewType">
+                                <option value="segments">Segments (flat colour regions)</option>
+                                <option value="mosaic view">Mosaic view (stacked segment panels)</option>
+                            </select>
+                        </div>
+
                         <button id="btnRegenerate" style="margin-top: 15px;">Re-run Algorithm</button>
                     </div>
 
@@ -344,18 +530,115 @@
     </div>
 
     <script>
+        // ── State ─────────────────────────────────────────────────────────────
         let currentRunId = null;
         let currentHintMode = 'fg'; // 'fg' or 'bg'
         
         let imagesData = { xy: null, yz: null, xz: null };
-        let masksData = { xy: null, yz: null, xz: null };
+        let masksData  = { xy: null, yz: null, xz: null };
         let hints = { 
             xy: { fg: [], bg: [] }, 
             yz: { fg: [], bg: [] }, 
             xz: { fg: [], bg: [] } 
         };
 
-        // Tool toggling
+        // ── SVDCodes UI helpers ───────────────────────────────────────────────
+
+        /**
+         * Show/hide the SVDCodes parameter panel for the given context
+         * ('upload' or 'workspace').
+         */
+        function toggleSvdPanel(context) {
+            const selectId = context === 'upload' ? 'uploadStrategySelect' : 'strategySelect';
+            const panelId  = context === 'upload' ? 'svdPanelUpload'       : 'svdPanelWorkspace';
+            const isSvd = document.getElementById(selectId).value === 'svdcodes';
+            document.getElementById(panelId).style.display = isSvd ? 'block' : 'none';
+
+            // Only the workspace context drives the preview section visibility
+            if (context === 'workspace') {
+                if (!isSvd) document.getElementById('svdPreviewSection').style.display = 'none';
+            }
+        }
+
+        /**
+         * Show a warning when alpha is outside the recommended 8-64 range.
+         */
+        function checkAlphaWarning(inputId, warningId) {
+            const val = parseInt(document.getElementById(inputId).value, 10);
+            const warn = document.getElementById(warningId);
+            const outOfRange = isNaN(val) || val < 8 || val > 64;
+            warn.style.display = outOfRange ? 'block' : 'none';
+        }
+
+        // ── SVD Colour Preview ────────────────────────────────────────────────
+
+        /**
+         * Set a preview cell: replace the loading placeholder with an <img>.
+         */
+        function setSvdPreviewImg(view, url) {
+            const container = document.getElementById(`svdPreview_${view}`);
+            container.className = 'svd-preview-item'; // remove loading class
+            container.innerHTML = `<img src="${url}" alt="SVD colour preview ${view.toUpperCase()}">`;
+        }
+
+        function resetSvdPreviewLoading() {
+            ['xy', 'yz', 'xz'].forEach(view => {
+                const container = document.getElementById(`svdPreview_${view}`);
+                container.className = 'svd-preview-loading';
+                container.innerHTML = 'Loading…';
+            });
+        }
+
+        /**
+         * Fetch /api/svd-preview for one view and update the UI.
+         */
+        async function fetchSvdPreview(view, alpha, viewType) {
+            try {
+                const response = await fetch('/api/svd-preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        run_id: currentRunId,
+                        view: view,
+                        alpha: alpha,
+                        view_type: viewType,
+                    })
+                });
+                const data = await response.json();
+                if (response.ok) setSvdPreviewImg(view, data.preview_url);
+                else console.error(`SVD preview error (${view}):`, data.detail);
+            } catch (e) {
+                console.error(`SVD preview fetch failed (${view}):`, e);
+            }
+        }
+
+        /**
+         * Load colour previews for all three views from a map of URLs
+         * (returned directly by /api/segment or /api/resegment).
+         */
+        function loadSvdPreviewsFromUrls(previewUrls) {
+            document.getElementById('svdPreviewSection').style.display = 'block';
+            resetSvdPreviewLoading();
+            ['xy', 'yz', 'xz'].forEach(view => {
+                if (previewUrls && previewUrls[view]) {
+                    setSvdPreviewImg(view, previewUrls[view]);
+                }
+            });
+        }
+
+        /**
+         * Fetch previews on-demand for all three views (used after re-run when
+         * the response already contains preview URLs).
+         */
+        async function fetchAllSvdPreviews(alpha, viewType) {
+            document.getElementById('svdPreviewSection').style.display = 'block';
+            resetSvdPreviewLoading();
+            await Promise.all(
+                ['xy', 'yz', 'xz'].map(view => fetchSvdPreview(view, alpha, viewType))
+            );
+        }
+
+        // ── Tool toggling ─────────────────────────────────────────────────────
         document.getElementById('toolFg').addEventListener('click', (e) => {
             currentHintMode = 'fg';
             e.target.classList.add('active-fg');
@@ -372,7 +655,7 @@
             Object.keys(renderers).forEach(v => renderers[v].render());
         });
 
-        // Setup Canvas Drawing and Selection
+        // ── Canvas Drawing and Selection ──────────────────────────────────────
         function setupCanvas(view) {
             const canvas = document.getElementById(`canvas_${view}`);
             const ctx = canvas.getContext('2d');
@@ -544,16 +827,24 @@
             }
         }
 
+        // ── Upload form handler ───────────────────────────────────────────────
         document.getElementById('uploadForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btnUpload');
             btn.innerText = "Processing...";
             btn.disabled = true;
 
+            const strategy  = document.getElementById('uploadStrategySelect').value;
+            const alpha     = parseInt(document.getElementById('uploadSvdAlpha').value, 10) || 16;
+            const view_type = document.getElementById('uploadSvdViewType').value;
+
             const formData = new FormData();
-            formData.append('photo_xy', document.getElementById('photo_xy').files[0]);
-            formData.append('photo_yz', document.getElementById('photo_yz').files[0]);
-            formData.append('photo_xz', document.getElementById('photo_xz').files[0]);
+            formData.append('photo_xy',  document.getElementById('photo_xy').files[0]);
+            formData.append('photo_yz',  document.getElementById('photo_yz').files[0]);
+            formData.append('photo_xz',  document.getElementById('photo_xz').files[0]);
+            formData.append('strategy',  strategy);
+            formData.append('alpha',     alpha);
+            formData.append('view_type', view_type);
 
             try {
                 const response = await fetch('/api/segment', { method: 'POST', body: formData });
@@ -574,6 +865,17 @@
                         loadImage('xz', data.masks.xz, true)
                     ]);
 
+                    // Sync the workspace strategy selector with what was used on upload
+                    document.getElementById('strategySelect').value = strategy;
+                    toggleSvdPanel('workspace');
+
+                    if (strategy === 'svdcodes') {
+                        document.getElementById('workspaceSvdAlpha').value = alpha;
+                        document.getElementById('workspaceSvdViewType').value = view_type;
+                        // Load colour previews that the server already generated
+                        if (data.svd_previews) loadSvdPreviewsFromUrls(data.svd_previews);
+                    }
+
                     document.getElementById('step1').classList.remove('active');
                     document.getElementById('workspace').classList.add('active');
                 } else {
@@ -586,18 +888,32 @@
             btn.disabled = false;
         });
 
+        // ── Re-run algorithm handler ──────────────────────────────────────────
         document.getElementById('btnRegenerate').addEventListener('click', async () => {
             const btn = document.getElementById('btnRegenerate');
             btn.innerText = "Working...";
             btn.disabled = true;
+
             const focal_length = parseFloat(document.getElementById('focal_length').value);
-            const strategy = document.getElementById('strategySelect').value;
+            const strategy     = document.getElementById('strategySelect').value;
+            const alpha        = parseInt(document.getElementById('workspaceSvdAlpha').value, 10) || 16;
+            const view_type    = document.getElementById('workspaceSvdViewType').value;
+
+            const body = {
+                run_id: currentRunId,
+                strategy: strategy,
+                focal_length: focal_length,
+            };
+            if (strategy === 'svdcodes') {
+                body.alpha     = alpha;
+                body.view_type = view_type;
+            }
 
             try {
                 const response = await fetch('/api/resegment', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ run_id: currentRunId, strategy: strategy, focal_length: focal_length })
+                    body: JSON.stringify(body)
                 });
 
                 const data = await response.json();
@@ -608,6 +924,12 @@
                         loadImage('xz', data.masks.xz, true)
                     ]);
                     updateVolumeUI(data.estimated_volume_m3);
+
+                    if (strategy === 'svdcodes' && data.svd_previews) {
+                        loadSvdPreviewsFromUrls(data.svd_previews);
+                    } else {
+                        document.getElementById('svdPreviewSection').style.display = 'none';
+                    }
                 }
             } catch (error) {
                 alert("Failed to resegment.");
@@ -616,6 +938,7 @@
             btn.disabled = false;
         });
 
+        // ── Recalculate volume handler ────────────────────────────────────────
         document.getElementById('btnRecalculate').addEventListener('click', async () => {
             const btn = document.getElementById('btnRecalculate');
             btn.innerText = "Calculating...";

@@ -1,3 +1,3 @@
-from .strategy import SegmentationStrategy, HSVThresholdStrategy, SampledColorStrategy, GrabCutStrategy
+from .strategy import SegmentationStrategy, HSVThresholdStrategy, SampledColorStrategy, GrabCutStrategy, SVDCodesStrategy
 
-__all__ = ["SegmentationStrategy", "HSVThresholdStrategy", "SampledColorStrategy", "GrabCutStrategy"]
+__all__ = ["SegmentationStrategy", "HSVThresholdStrategy", "SampledColorStrategy", "GrabCutStrategy", "SVDCodesStrategy"]
