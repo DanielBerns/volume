@@ -1,6 +1,8 @@
+from typing import Any, Dict
+
 from PIL import Image
 from PIL.ExifTags import TAGS
-from typing import Dict, Any, Optional
+
 
 def extract_exif_metadata(image_path: str) -> Dict[str, Any]:
     """
@@ -18,7 +20,7 @@ def extract_exif_metadata(image_path: str) -> Dict[str, Any]:
                         metadata[tag_name] = str(value)
     except Exception as e:
         print(f"Failed to extract EXIF from {image_path}: {e}")
-    
+
     return metadata
 
 def get_focal_length(metadata: Dict[str, Any], default: float = 50.0) -> float:
@@ -31,7 +33,7 @@ def get_focal_length(metadata: Dict[str, Any], default: float = 50.0) -> float:
             return float(metadata['FocalLengthIn35mmFilm'])
         except ValueError:
             pass
-            
+
     if 'FocalLength' in metadata:
         try:
             val = metadata['FocalLength']
@@ -41,5 +43,5 @@ def get_focal_length(metadata: Dict[str, Any], default: float = 50.0) -> float:
             return float(val)
         except (ValueError, TypeError, ZeroDivisionError):
             pass
-            
+
     return default

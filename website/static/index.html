@@ -110,6 +110,26 @@
 
         button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
+        /* ── Red Trihedron param panel ── */
+        .tri-panel {
+            display: block;
+            margin-top: 14px;
+            padding: 14px;
+            border-radius: 8px;
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .tri-panel label { color: #f87171; font-size: 0.85rem; }
+        .tri-panel input[type="number"] { border-color: rgba(239, 68, 68, 0.35); }
+
+        .tri-title {
+            font-size: 0.8rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.07em;
+            color: #f87171; margin-bottom: 8px;
+        }
+
         /* ── SVDCodes param panel ── */
         .svd-panel {
             display: none;
@@ -270,7 +290,7 @@
             border: 2px solid var(--border);
             overflow: hidden;
             transition: border-color 0.15s, box-shadow 0.15s;
-            width: 96px;
+            width: 160px;
             background: #000;
             user-select: none;
         }
@@ -284,8 +304,8 @@
 
         .cluster-card img {
             display: block;
-            width: 96px;
-            height: 96px;
+            width: 160px;
+            height: 160px;
             object-fit: cover;
         }
 
@@ -379,11 +399,19 @@
 
             <div class="form-group">
                 <label for="uploadStrategySelect">Segmentation Algorithm</label>
-                <select id="uploadStrategySelect" onchange="toggleSvdPanel('upload')">
+                <select id="uploadStrategySelect" onchange="toggleStrategyPanels('upload')">
+                    <option value="trihedron" selected>Red Trihedron Reference (Calibrated &amp; Metric)</option>
                     <option value="hsv">HSV Threshold (Fast &amp; Simple)</option>
                     <option value="grabcut">GrabCut (Automated CV)</option>
                     <option value="svdcodes">SVDCodes (SVD-based clustering)</option>
                 </select>
+
+                <div id="trihedronPanelUpload" class="tri-panel" style="display: block;">
+                    <div class="tri-title">🔺 Red Trihedron Configuration</div>
+                    <label for="uploadArmLength">Physical Arm Length (cm)</label>
+                    <input type="number" id="uploadArmLength" min="1.0" max="100.0" step="0.1" value="20.0">
+                    <p class="hint" style="margin-top: 5px; margin-bottom: 0;">Calibrated reference arm length (default: 20.0 cm, 5 mm bar width).</p>
+                </div>
 
                 <div id="svdPanelUpload" class="svd-panel">
                     <div class="svd-title">⬡ SVDCodes Parameters</div>
@@ -501,17 +529,27 @@
             <!-- Sidebar -->
             <div class="sidebar">
                 <div class="result-box">
-                    <p>Estimated Volume</p>
-                    <div class="volume-text"><span id="volumeOutput">0.000000</span> m³</div>
+                    <p>Estimated Plant Volume</p>
+                    <div class="volume-text"><span id="volumeOutputCm3">0.00</span> cm³</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
+                        (<span id="volumeOutput">0.000000</span> m³)
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <label for="strategySelect">Base Algorithm</label>
-                    <select id="strategySelect" onchange="toggleSvdPanel('workspace')">
+                    <select id="strategySelect" onchange="toggleStrategyPanels('workspace')">
+                        <option value="trihedron" selected>Red Trihedron Reference (Calibrated &amp; Metric)</option>
                         <option value="hsv">HSV Threshold (Fast &amp; Simple)</option>
-                        <option value="grabcut" selected>GrabCut (Automated CV)</option>
+                        <option value="grabcut">GrabCut (Automated CV)</option>
                         <option value="svdcodes">SVDCodes (SVD-based clustering)</option>
                     </select>
+
+                    <div id="trihedronPanelWorkspace" class="tri-panel" style="display: block;">
+                        <div class="tri-title">🔺 Red Trihedron Reference</div>
+                        <label for="workspaceArmLength">Physical Arm Length (cm)</label>
+                        <input type="number" id="workspaceArmLength" min="1.0" max="100.0" step="0.1" value="20.0">
+                    </div>
 
                     <div id="svdPanelWorkspace" class="svd-panel">
                         <div class="svd-title">⬡ SVDCodes Parameters</div>
@@ -568,11 +606,18 @@ let clusterSelection = { xy: new Set(), yz: new Set(), xz: new Set() };
 
 // ── SVDCodes UI helpers ────────────────────────────────────────────────────────
 
-function toggleSvdPanel(context) {
+function toggleStrategyPanels(context) {
     const selectId = context === 'upload' ? 'uploadStrategySelect' : 'strategySelect';
-    const panelId  = context === 'upload' ? 'svdPanelUpload'       : 'svdPanelWorkspace';
-    const isSvd    = document.getElementById(selectId).value === 'svdcodes';
-    document.getElementById(panelId).style.display = isSvd ? 'block' : 'none';
+    const svdPanelId  = context === 'upload' ? 'svdPanelUpload'       : 'svdPanelWorkspace';
+    const triPanelId  = context === 'upload' ? 'trihedronPanelUpload' : 'trihedronPanelWorkspace';
+    const val = document.getElementById(selectId).value;
+
+    const isSvd = val === 'svdcodes';
+    const isTri = val === 'trihedron';
+
+    document.getElementById(svdPanelId).style.display = isSvd ? 'block' : 'none';
+    document.getElementById(triPanelId).style.display = isTri ? 'block' : 'none';
+
     if (context === 'workspace') {
         document.getElementById('svdClusterExplorer').style.display = isSvd ? 'block' : 'none';
     }
@@ -682,6 +727,7 @@ async function computeVolumeFromSelection() {
     }
 
     const focal_length = parseFloat(document.getElementById('focal_length').value);
+    const arm_length_cm = parseFloat(document.getElementById('workspaceArmLength').value) || 20.0;
 
     try {
         const res  = await fetch('/api/compute-from-clusters', {
@@ -690,6 +736,7 @@ async function computeVolumeFromSelection() {
             body: JSON.stringify({
                 run_id: currentRunId,
                 focal_length,
+                arm_length_cm,
                 selected_codes: selectedCodes,
             }),
         });
@@ -701,7 +748,7 @@ async function computeVolumeFromSelection() {
                 loadImage('yz', data.masks.yz, true),
                 loadImage('xz', data.masks.xz, true),
             ]);
-            updateVolumeUI(data.estimated_volume_m3);
+            updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3);
             setClusterStatus(`Volume updated — ${selectedCodes.xy.length} XY · ${selectedCodes.yz.length} YZ · ${selectedCodes.xz.length} XZ clusters used.`);
         } else {
             setClusterStatus(`Error: ${data.detail}`);
@@ -847,24 +894,32 @@ function loadImage(view, url, isMask = false) {
     });
 }
 
-function updateVolumeUI(vol) {
-    document.getElementById('volumeOutput').innerText = parseFloat(vol).toFixed(6);
+function updateVolumeUI(volM3, volCm3) {
+    if (volCm3 !== undefined && volCm3 !== null) {
+        document.getElementById('volumeOutputCm3').innerText = parseFloat(volCm3).toFixed(2);
+    } else if (volM3 !== undefined && volM3 !== null) {
+        document.getElementById('volumeOutputCm3').innerText = (parseFloat(volM3) * 1e6).toFixed(2);
+    }
+    if (volM3 !== undefined && volM3 !== null) {
+        document.getElementById('volumeOutput').innerText = parseFloat(volM3).toFixed(6);
+    }
 }
 
 async function updateMask(view) {
     const focal_length = parseFloat(document.getElementById('focal_length').value);
+    const arm_length_cm = parseFloat(document.getElementById('workspaceArmLength').value) || 20.0;
     const fg_list = hints[view].fg.map(r => [r.x, r.y, r.w, r.h]);
     const bg_list = hints[view].bg.map(r => [r.x, r.y, r.w, r.h]);
     try {
         const res  = await fetch('/api/update-mask', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ run_id: currentRunId, view, focal_length, fg_rects: fg_list, bg_rects: bg_list }),
+            body: JSON.stringify({ run_id: currentRunId, view, focal_length, arm_length_cm, fg_rects: fg_list, bg_rects: bg_list }),
         });
         const data = await res.json();
         if (res.ok) {
             await loadImage(view, data.mask_url, true);
-            updateVolumeUI(data.estimated_volume_m3);
+            updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3);
         }
     } catch (e) { console.error('Failed to update mask', e); }
 }
@@ -876,6 +931,7 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
     btn.textContent = 'Processing…'; btn.disabled = true;
 
     const strategy        = document.getElementById('uploadStrategySelect').value;
+    const arm_length_cm   = parseFloat(document.getElementById('uploadArmLength').value) || 20.0;
     const alpha           = parseInt(document.getElementById('uploadSvdAlpha').value, 10) || 16;
     const min_cluster_pct = parseFloat(document.getElementById('uploadSvdPct').value) || 1.0;
 
@@ -884,6 +940,7 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
     fd.append('photo_yz',        document.getElementById('photo_yz').files[0]);
     fd.append('photo_xz',        document.getElementById('photo_xz').files[0]);
     fd.append('strategy',        strategy);
+    fd.append('arm_length_cm',   arm_length_cm);
     fd.append('alpha',           alpha);
     fd.append('min_cluster_pct', min_cluster_pct);
 
@@ -894,7 +951,8 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
         if (res.ok) {
             currentRunId = data.run_id;
             document.getElementById('focal_length').value = data.focal_length.toFixed(2);
-            updateVolumeUI(data.estimated_volume_m3);
+            document.getElementById('workspaceArmLength').value = arm_length_cm;
+            updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3);
 
             await Promise.all([
                 loadImage('xy', data.images.xy),
@@ -907,7 +965,7 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
 
             // Sync workspace selector with upload choice
             document.getElementById('strategySelect').value = strategy;
-            toggleSvdPanel('workspace');
+            toggleStrategyPanels('workspace');
 
             if (strategy === 'svdcodes') {
                 document.getElementById('workspaceSvdAlpha').value = alpha;
@@ -934,10 +992,11 @@ document.getElementById('btnRegenerate').addEventListener('click', async () => {
 
     const strategy        = document.getElementById('strategySelect').value;
     const focal_length    = parseFloat(document.getElementById('focal_length').value);
+    const arm_length_cm   = parseFloat(document.getElementById('workspaceArmLength').value) || 20.0;
     const alpha           = parseInt(document.getElementById('workspaceSvdAlpha').value, 10) || 16;
     const min_cluster_pct = parseFloat(document.getElementById('workspaceSvdPct').value) || 1.0;
 
-    const body = { run_id: currentRunId, strategy, focal_length };
+    const body = { run_id: currentRunId, strategy, focal_length, arm_length_cm };
     if (strategy === 'svdcodes') { body.alpha = alpha; body.min_cluster_pct = min_cluster_pct; }
 
     try {
@@ -954,7 +1013,7 @@ document.getElementById('btnRegenerate').addEventListener('click', async () => {
                 loadImage('yz', data.masks.yz, true),
                 loadImage('xz', data.masks.xz, true),
             ]);
-            updateVolumeUI(data.estimated_volume_m3);
+            updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3);
 
             if (strategy === 'svdcodes' && data.clusters) {
                 renderClusterExplorer(data.clusters);
@@ -967,19 +1026,20 @@ document.getElementById('btnRegenerate').addEventListener('click', async () => {
     btn.textContent = 'Re-run Algorithm'; btn.disabled = false;
 });
 
-// ── Recalculate volume (focal length change) ──────────────────────────────────
+// ── Recalculate volume (focal length or arm length change) ─────────────────────
 document.getElementById('btnRecalculate').addEventListener('click', async () => {
     const btn = document.getElementById('btnRecalculate');
     btn.textContent = 'Calculating…'; btn.disabled = true;
     const focal_length = parseFloat(document.getElementById('focal_length').value);
+    const arm_length_cm = parseFloat(document.getElementById('workspaceArmLength').value) || 20.0;
     try {
         const res  = await fetch('/api/calculate-volume', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ run_id: currentRunId, focal_length }),
+            body: JSON.stringify({ run_id: currentRunId, focal_length, arm_length_cm }),
         });
         const data = await res.json();
-        if (res.ok) updateVolumeUI(data.estimated_volume_m3);
+        if (res.ok) updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3);
     } catch (e) { console.error(e); }
     btn.textContent = 'Recalculate Volume'; btn.disabled = false;
 });

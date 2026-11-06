@@ -54,10 +54,19 @@ for node in ast.walk(strat_tree):
         }
 
 print("\nstrategy.py:")
-check("get_cluster_masks_data imported",             "get_cluster_masks_data"  in strat_imports)
-check("SVDCodesStrategy.get_cluster_masks defined",  "get_cluster_masks" in class_methods.get("SVDCodesStrategy", set()))
-check("SVDCodesStrategy.create_mask still present",  "create_mask"       in class_methods.get("SVDCodesStrategy", set()))
-check("SVDCodesStrategy.segment_image still present","segment_image"     in class_methods.get("SVDCodesStrategy", set()))
+check("get_cluster_masks_data imported", "get_cluster_masks_data" in strat_imports)
+check(
+    "SVDCodesStrategy.get_cluster_masks defined",
+    "get_cluster_masks" in class_methods.get("SVDCodesStrategy", set()),
+)
+check(
+    "SVDCodesStrategy.create_mask still present",
+    "create_mask" in class_methods.get("SVDCodesStrategy", set()),
+)
+check(
+    "SVDCodesStrategy.segment_image still present",
+    "segment_image" in class_methods.get("SVDCodesStrategy", set()),
+)
 
 # ── main.py ───────────────────────────────────────────────────────────────────
 main_path = ROOT / "website" / "main.py"

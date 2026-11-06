@@ -1,15 +1,19 @@
 from abc import ABC, abstractmethod
+
+import cv2
 import numpy as np
 from PIL import Image
-import cv2
+
 from volumen.svdcodes import (
-    get_pixels,
-    get_transformed_data,
+    get_cluster_masks_data,
     get_codes,
+    get_pixels,
     get_segments,
     get_segments_mosaic_view,
-    get_cluster_masks_data,
+    get_transformed_data,
 )
+from volumen.trihedron import extract_red_mask
+
 
 class SegmentationStrategy(ABC):
     @abstractmethod
@@ -45,7 +49,14 @@ class SampledColorStrategy(SegmentationStrategy):
     A strategy that uses a set of sampled HSV pixels to define the mask,
     by selecting pixels that fall within a tolerance of the sampled values.
     """
-    def create_mask(self, image_path: str, resolution: int, sampled_pixels: list = None, tolerance: int = 20, **kwargs) -> np.ndarray:
+    def create_mask(
+        self,
+        image_path: str,
+        resolution: int,
+        sampled_pixels: list = None,
+        tolerance: int = 20,
+        **kwargs,
+    ) -> np.ndarray:
         img = Image.open(image_path).convert('HSV')
         # We need to compute mask at original resolution if sampled_pixels coordinates are original,
         # but the problem states sampled pixels are just colors, or we can just apply it after resize.
@@ -59,7 +70,7 @@ class SampledColorStrategy(SegmentationStrategy):
 
         mask = np.zeros((resolution, resolution), dtype=bool)
         samples = np.array(sampled_pixels) # shape (N, 3)
-        
+
         # Simple color distance approach: for each pixel, find min distance to any sample
         # Since HSV is cylindrical, hue distance should be cyclic, but for simplicity
         # we can use absolute difference. Let's do a basic bound check.
@@ -67,10 +78,10 @@ class SampledColorStrategy(SegmentationStrategy):
             # Wrap around for hue (0-255 in Pillow HSV corresponds to 0-360 deg)
             hue_diff = np.abs(hsv_array[:, :, 0].astype(int) - int(h))
             hue_diff = np.minimum(hue_diff, 256 - hue_diff)
-            
+
             sat_diff = np.abs(hsv_array[:, :, 1].astype(int) - int(s))
             # Ignore V for robustness against lighting variations, or include it with less weight
-            
+
             # Condition: hue within tolerance, and saturation not too far
             match = (hue_diff < tolerance) & (sat_diff < tolerance * 2)
             mask = mask | match
@@ -85,21 +96,21 @@ class GrabCutStrategy(SegmentationStrategy):
         img = Image.open(image_path).convert('RGB')
         img = img.resize((resolution, resolution), Image.Resampling.LANCZOS)
         cv_img = np.array(img)
-        
+
         # Convert RGB to BGR for OpenCV
         cv_img = cv_img[:, :, ::-1]
-        
+
         mask = np.zeros(cv_img.shape[:2], np.uint8)
         bgdModel = np.zeros((1, 65), np.float64)
         fgdModel = np.zeros((1, 65), np.float64)
-        
+
         fg_rects = kwargs.get('fg_rects', [])
         bg_rects = kwargs.get('bg_rects', [])
-        
+
         # Define a bounding box slightly smaller than the image
         margin = int(resolution * 0.05)
         rect = (margin, margin, resolution - 2*margin, resolution - 2*margin)
-        
+
         try:
             if not fg_rects and not bg_rects:
                 cv2.grabCut(cv_img, mask, rect, bgdModel, fgdModel, 5, cv2.GC_INIT_WITH_RECT)
@@ -108,21 +119,21 @@ class GrabCutStrategy(SegmentationStrategy):
                 mask[:] = cv2.GC_BGD
                 # Make the central region PR_BGD or PR_FGD
                 mask[margin:resolution-margin, margin:resolution-margin] = cv2.GC_PR_BGD
-                
+
                 # We need to make sure there's at least some PR_FGD or FGD
                 if not fg_rects:
                      mask[margin*2:resolution-margin*2, margin*2:resolution-margin*2] = cv2.GC_PR_FGD
-                     
+
                 for (x, y, w, h) in bg_rects:
                     mask[y:y+h, x:x+w] = cv2.GC_BGD
                 for (x, y, w, h) in fg_rects:
                     mask[y:y+h, x:x+w] = cv2.GC_FGD
-                    
+
                 cv2.grabCut(cv_img, mask, None, bgdModel, fgdModel, 5, cv2.GC_INIT_WITH_MASK)
         except Exception as e:
             print(f"GrabCut failed: {e}")
             return np.zeros((resolution, resolution), dtype=bool)
-            
+
         # 0 and 2 are background, 1 and 3 are foreground
         mask2 = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
         return mask2.astype(bool)
@@ -251,3 +262,52 @@ class SVDCodesStrategy(SegmentationStrategy):
 
         cluster_data = get_cluster_masks_data(frame, pixels, codes)
         return cluster_data, codes
+
+
+class TrihedronPlantSegmentationStrategy(SegmentationStrategy):
+    """
+    A strategy that isolates green/foliar plant tissue while strictly excluding
+    the red reference trihedron, the container/pot, and the background.
+    """
+
+    def create_mask(self, image_path: str, resolution: int, **kwargs) -> np.ndarray:
+        img = cv2.imread(str(image_path))
+        if img is None:
+            pil_img = Image.open(image_path).convert("RGB")
+            img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+        # Red trihedron detection & exclusion
+        red_mask = extract_red_mask(img)
+        red_dilated = cv2.dilate(red_mask, cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7)))
+
+        # Foliage HSV range
+        hue_min = kwargs.get("hue_min", 16)
+        hue_max = kwargs.get("hue_max", 95)
+        sat_min = kwargs.get("sat_min", 20)
+        val_min = kwargs.get("val_min", 20)
+        val_max = kwargs.get("val_max", 240)
+
+        plant_mask = cv2.inRange(
+            hsv,
+            np.array([hue_min, sat_min, val_min]),
+            np.array([hue_max, 255, val_max]),
+        )
+        plant_mask[red_dilated > 0] = 0
+
+        # Filter small noise components
+        num, labels, stats, _ = cv2.connectedComponentsWithStats(plant_mask)
+        clean = np.zeros_like(plant_mask, dtype=bool)
+        for i in range(1, num):
+            if stats[i, cv2.CC_STAT_AREA] >= 10:
+                clean[labels == i] = True
+
+        # Resize to requested resolution if needed
+        if resolution != img.shape[0] or resolution != img.shape[1]:
+            clean_uint8 = clean.astype(np.uint8) * 255
+            resized = cv2.resize(clean_uint8, (resolution, resolution), interpolation=cv2.INTER_NEAREST)
+            return resized > 0
+
+        return clean
+
