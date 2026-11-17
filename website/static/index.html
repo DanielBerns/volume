@@ -374,32 +374,444 @@
             color: var(--text-muted);
             font-style: italic;
         }
+
+        /* ── Accessibility, Form Validation & Direct Measure / Correlation UI ── */
+        .visually-hidden:where(:not(:focus-within, :active)) {
+            position: absolute !important;
+            clip-path: inset(50%) !important;
+            overflow: hidden !important;
+            width: 1px !important;
+            height: 1px !important;
+            margin: -1px !important;
+            padding: 0 !important;
+            border: 0 !important;
+            white-space: nowrap !important;
+        }
+
+        :where(a:any-link, button, input, select, textarea, .table-wrapper):focus-visible {
+            outline: 3px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        fieldset.optional-fieldset {
+            margin: 0 0 20px 0;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        fieldset.optional-fieldset legend {
+            padding: 0 8px;
+            font-weight: 600;
+            font-size: 0.92rem;
+            color: var(--accent);
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.35rem;
+            margin-block-end: 1rem;
+        }
+
+        .field:last-child {
+            margin-block-end: 0;
+        }
+
+        .field label {
+            margin-bottom: 0;
+            font-size: 0.9rem;
+        }
+
+        .field-hint {
+            display: block;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            line-height: 1.35;
+        }
+
+        .field input[type="text"],
+        .field input[type="number"],
+        .field select {
+            font: inherit;
+            font-size: max(1rem, 1em);
+            min-height: 48px;
+            padding: 0.65rem 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-color);
+            color: var(--text-main);
+            box-sizing: border-box;
+        }
+
+        @media (pointer: coarse) {
+            .field input[type="text"],
+            .field input[type="number"],
+            .field select {
+                min-height: 52px;
+            }
+        }
+
+        .error-msg {
+            display: none;
+            color: #fca5a5;
+            font-size: 0.85rem;
+            line-height: 1.35;
+        }
+
+        .field :is(:user-invalid, .user-invalid-fallback) {
+            border-color: #f87171;
+            background-color: rgba(239, 68, 68, 0.14);
+        }
+
+        .field :is(:user-invalid, .user-invalid-fallback) + .error-msg {
+            display: block;
+        }
+
+        .field :is(:user-valid, .user-valid-fallback):not(:placeholder-shown) {
+            border-color: var(--accent);
+        }
+
+        .form-grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 14px;
+        }
+
+        .direct-measure-card {
+            border-color: rgba(16, 185, 129, 0.45);
+            background: rgba(16, 185, 129, 0.06);
+        }
+
+        .direct-measure-card h3 {
+            font-size: 0.95rem;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .status-banner {
+            margin-top: 10px;
+            font-size: 0.84rem;
+            line-height: 1.4;
+            color: var(--text-muted);
+            min-height: 1.2em;
+        }
+
+        .status-banner.success { color: var(--accent); }
+        .status-banner.error   { color: #fca5a5; }
+
+        /* ── Correlation Study Section ── */
+        .correlation-section {
+            margin-top: 36px;
+            padding-top: 28px;
+            border-top: 1px solid var(--border);
+        }
+
+        .correlation-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .correlation-header h2 {
+            margin: 0;
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-main);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+            width: auto;
+            margin-top: 0;
+        }
+
+        .btn-secondary:hover {
+            background: var(--surface-hover);
+            border-color: var(--primary);
+            transform: none;
+            box-shadow: none;
+        }
+
+        .correlation-layout {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        @media (max-width: 960px) {
+            .correlation-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .corr-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .corr-card h3 {
+            font-size: 1rem;
+            margin-bottom: 14px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-tile {
+            background: var(--bg-color);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .stat-sub {
+            font-size: 0.76rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .plot-figure {
+            margin: 0;
+            background: var(--bg-color);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            position: relative;
+        }
+
+        .plot-figure svg {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .plot-figure figcaption {
+            margin-top: 10px;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .plot-tooltip {
+            position: absolute;
+            pointer-events: none;
+            background: rgba(15, 23, 42, 0.96);
+            border: 1px solid var(--primary);
+            color: var(--text-main);
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 0.78rem;
+            line-height: 1.4;
+            z-index: 10;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        /* ── Responsive Table (container query + sticky headers) ── */
+        .table-wrapper {
+            margin-top: 24px;
+            overflow: auto;
+            max-inline-size: 100%;
+            max-block-size: min(440px, 70vh);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--surface);
+            container-type: inline-size;
+        }
+
+        .corr-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.88rem;
+            text-align: left;
+            --label-1: "Sample";
+            --label-2: "Algorithm";
+            --label-3: "Direct (cm³)";
+            --label-4: "Estimated (cm³)";
+            --label-5: "Diff (cm³)";
+            --label-6: "Error (%)";
+            --label-7: "Method";
+            --label-8: "Actions";
+        }
+
+        .corr-table caption {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-main);
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .corr-table thead {
+            position: sticky;
+            inset-block-start: 0;
+            z-index: 2;
+        }
+
+        .corr-table th,
+        .corr-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(71, 85, 105, 0.5);
+            white-space: nowrap;
+        }
+
+        .corr-table thead th {
+            background: #162032;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .corr-table tbody th {
+            position: sticky;
+            inset-inline-start: 0;
+            z-index: 1;
+            background: var(--surface);
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .corr-table tbody tr:hover td,
+        .corr-table tbody tr:hover th {
+            background: rgba(51, 65, 85, 0.5);
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-mini {
+            width: auto;
+            margin: 0;
+            padding: 6px 10px;
+            min-height: 32px;
+            font-size: 0.78rem;
+            border-radius: 6px;
+            background: var(--surface-hover);
+        }
+
+        .btn-mini.danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-mini.danger:hover {
+            background: rgba(239, 68, 68, 0.35);
+        }
+
+        @container (width < 600px) {
+            .corr-table, .corr-table thead, .corr-table tbody,
+            .corr-table tr, .corr-table th, .corr-table td {
+                display: block;
+            }
+
+            .corr-table thead {
+                display: none;
+            }
+
+            .corr-table tbody tr {
+                margin: 12px;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                overflow: hidden;
+                background: var(--bg-color);
+            }
+
+            .corr-table tbody th {
+                position: sticky;
+                inset-block-start: 0;
+                z-index: 2;
+                background: #162032;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .corr-table td {
+                white-space: normal;
+            }
+
+            .corr-table td:nth-child(2)::before { content: var(--label-2) ": "; color: var(--text-muted); font-weight: 600; }
+            .corr-table td:nth-child(3)::before { content: var(--label-3) ": "; color: var(--text-muted); font-weight: 600; }
+            .corr-table td:nth-child(4)::before { content: var(--label-4) ": "; color: var(--text-muted); font-weight: 600; }
+            .corr-table td:nth-child(5)::before { content: var(--label-5) ": "; color: var(--text-muted); font-weight: 600; }
+            .corr-table td:nth-child(6)::before { content: var(--label-6) ": "; color: var(--text-muted); font-weight: 600; }
+            .corr-table td:nth-child(7)::before { content: var(--label-7) ": "; color: var(--text-muted); font-weight: 600; }
+            .corr-table td:nth-child(8)::before { content: var(--label-8) ": "; color: var(--text-muted); font-weight: 600; }
+        }
     </style>
 </head>
 <body>
-<div class="container">
+<main class="container">
     <h1>Plant Volume Estimator Pro</h1>
+
+    <datalist id="directMethodOptions">
+        <option value="Water displacement (Archimedes)"></option>
+        <option value="Graduated cylinder"></option>
+        <option value="Pycnometer"></option>
+        <option value="Geometric / caliper"></option>
+    </datalist>
 
     <!-- ── STEP 1: UPLOAD ───────────────────────────────────────────────── -->
     <div id="step1" class="step-container active">
-        <h2>Step 1: Upload Images</h2>
-        <form id="uploadForm">
+        <h2 id="step1Heading">Step 1: Upload Images</h2>
+        <form id="uploadForm" aria-labelledby="step1Heading">
             <div class="form-group">
-                <label>XY Axis Photo</label>
-                <input type="file" id="photo_xy" accept="image/jpeg, image/png" required>
+                <label for="photo_xy">XY Axis Photo</label>
+                <input type="file" id="photo_xy" name="photo_xy" accept="image/jpeg, image/png" required>
             </div>
             <div class="form-group">
-                <label>YZ Axis Photo</label>
-                <input type="file" id="photo_yz" accept="image/jpeg, image/png" required>
+                <label for="photo_yz">YZ Axis Photo</label>
+                <input type="file" id="photo_yz" name="photo_yz" accept="image/jpeg, image/png" required>
             </div>
             <div class="form-group">
-                <label>XZ Axis Photo</label>
-                <input type="file" id="photo_xz" accept="image/jpeg, image/png" required>
+                <label for="photo_xz">XZ Axis Photo</label>
+                <input type="file" id="photo_xz" name="photo_xz" accept="image/jpeg, image/png" required>
             </div>
 
             <div class="form-group">
                 <label for="uploadStrategySelect">Segmentation Algorithm</label>
-                <select id="uploadStrategySelect" onchange="toggleStrategyPanels('upload')">
+                <select id="uploadStrategySelect" name="strategy" onchange="toggleStrategyPanels('upload')">
                     <option value="trihedron" selected>Red Trihedron Reference (Calibrated &amp; Metric)</option>
                     <option value="hsv">HSV Threshold (Fast &amp; Simple)</option>
                     <option value="grabcut">GrabCut (Automated CV)</option>
@@ -409,7 +821,7 @@
                 <div id="trihedronPanelUpload" class="tri-panel" style="display: block;">
                     <div class="tri-title">🔺 Red Trihedron Configuration</div>
                     <label for="uploadArmLength">Physical Arm Length (cm)</label>
-                    <input type="number" id="uploadArmLength" min="1.0" max="100.0" step="0.1" value="20.0">
+                    <input type="number" id="uploadArmLength" name="arm_length_cm" min="1.0" max="100.0" step="0.1" value="20.0">
                     <p class="hint" style="margin-top: 5px; margin-bottom: 0;">Calibrated reference arm length (default: 20.0 cm, 5 mm bar width).</p>
                 </div>
 
@@ -418,7 +830,7 @@
                     <div class="svd-param-row">
                         <div>
                             <label for="uploadSvdAlpha">Alpha (1–255)</label>
-                            <input type="number" id="uploadSvdAlpha" min="1" max="255" value="16"
+                            <input type="number" id="uploadSvdAlpha" name="alpha" min="1" max="255" value="16"
                                    oninput="checkAlphaWarning('uploadSvdAlpha','uploadAlphaWarn')">
                             <div id="uploadAlphaWarn" class="alpha-warning">
                                 ⚠ Recommended range: <strong>8 – 64</strong>.
@@ -426,11 +838,37 @@
                         </div>
                         <div>
                             <label for="uploadSvdPct">Min. cluster size (%)</label>
-                            <input type="number" id="uploadSvdPct" min="0.1" max="50" step="0.1" value="1.0">
+                            <input type="number" id="uploadSvdPct" name="min_cluster_pct" min="0.1" max="50" step="0.1" value="1.0">
                         </div>
                     </div>
                 </div>
             </div>
+
+            <fieldset class="optional-fieldset">
+                <legend>Direct Volume Measurement (Optional)</legend>
+                <div class="form-grid-2">
+                    <div class="field">
+                        <label for="uploadDirectVolume">Direct-Method Volume (cm³)</label>
+                        <span id="uploadDirectHint" class="field-hint">Measured volume in cm³ (e.g., water displacement) for correlation study.</span>
+                        <input type="number" id="uploadDirectVolume" name="direct_volume_cm3"
+                               min="0.0001" step="any" inputmode="decimal"
+                               aria-describedby="uploadDirectHint" data-error="uploadDirectVolError">
+                        <div id="uploadDirectVolError" class="error-msg">
+                            <span role="img" aria-label="Error">❌</span> Enter a positive volume in cm³ (greater than 0), or leave blank.
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="uploadSampleName">Sample Name / ID (Optional)</label>
+                        <span id="uploadSampleHint" class="field-hint">Identifier shown in the correlation table and scatter plot.</span>
+                        <input type="text" id="uploadSampleName" name="sample_name" maxlength="80" aria-describedby="uploadSampleHint">
+                    </div>
+                    <div class="field">
+                        <label for="uploadDirectMethod">Direct Method (Optional)</label>
+                        <span id="uploadMethodHint" class="field-hint">E.g., Water displacement (Archimedes) or graduated cylinder.</span>
+                        <input type="text" id="uploadDirectMethod" name="direct_method" list="directMethodOptions" maxlength="80" aria-describedby="uploadMethodHint">
+                    </div>
+                </div>
+            </fieldset>
 
             <button type="submit" id="btnUpload">Process &amp; Calculate Volume</button>
         </form>
@@ -536,6 +974,32 @@
                     </div>
                 </div>
 
+                <div class="form-group direct-measure-card">
+                    <form id="workspaceDirectForm" aria-labelledby="wsDirectHeading" novalidate>
+                        <h3 id="wsDirectHeading">Direct-Method Volume</h3>
+                        <div class="field">
+                            <label for="wsDirectVolume">Measured Volume (cm³) <span aria-hidden="true">*</span></label>
+                            <span id="wsDirectHint" class="field-hint">Volume obtained by a direct method (e.g. water displacement) for correlation with this estimate.</span>
+                            <input type="number" id="wsDirectVolume" name="direct_volume_cm3"
+                                   min="0.0001" step="any" inputmode="decimal" required
+                                   aria-describedby="wsDirectHint" data-error="wsDirectVolError">
+                            <div id="wsDirectVolError" class="error-msg">
+                                <span role="img" aria-label="Error">❌</span> Enter a positive volume in cm³ (greater than 0).
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="wsSampleName">Sample Name / ID (Optional)</label>
+                            <input type="text" id="wsSampleName" name="sample_name" maxlength="80">
+                        </div>
+                        <div class="field">
+                            <label for="wsDirectMethod">Direct Method (Optional)</label>
+                            <input type="text" id="wsDirectMethod" name="direct_method" list="directMethodOptions" maxlength="80">
+                        </div>
+                        <button type="submit" id="btnSaveWsDirect">Save Direct Measure</button>
+                        <div id="wsDirectStatus" class="status-banner" role="status" aria-live="polite"></div>
+                    </form>
+                </div>
+
                 <div class="form-group">
                     <label for="strategySelect">Base Algorithm</label>
                     <select id="strategySelect" onchange="toggleStrategyPanels('workspace')">
@@ -569,28 +1033,145 @@
                         </div>
                     </div>
 
-                    <button id="btnRegenerate" style="margin-top:15px;">Re-run Algorithm</button>
+                    <button type="button" id="btnRegenerate" style="margin-top:15px;">Re-run Algorithm</button>
                 </div>
 
                 <div class="form-group">
                     <label>Interactive Refinement Tool</label>
                     <div class="toggle-group">
-                        <button class="toggle-btn active-fg" id="toolFg">Select Plant<br>(Foreground)</button>
-                        <button class="toggle-btn" id="toolBg">Select Space<br>(Background)</button>
+                        <button type="button" class="toggle-btn active-fg" id="toolFg">Select Plant<br>(Foreground)</button>
+                        <button type="button" class="toggle-btn" id="toolBg">Select Space<br>(Background)</button>
                     </div>
-                    <button id="btnClearHints" style="margin-top:15px; background:var(--surface-hover);">Clear Hints</button>
+                    <button type="button" id="btnClearHints" style="margin-top:15px; background:var(--surface-hover);">Clear Hints</button>
                 </div>
 
                 <div class="form-group">
-                    <label>Camera Focal Length (mm)</label>
+                    <label for="focal_length">Camera Focal Length (mm)</label>
                     <input type="number" id="focal_length" step="0.1" value="50.0">
                     <p class="hint" style="margin-top:5px;">Auto-extracted from EXIF. Update and recalculate if incorrect.</p>
-                    <button id="btnRecalculate">Recalculate Volume</button>
+                    <button type="button" id="btnRecalculate">Recalculate Volume</button>
                 </div>
             </div>
         </div>
     </div>
-</div>
+
+    <!-- ── CORRELATION STUDY ────────────────────────────────────────────── -->
+    <section id="correlationSection" class="correlation-section" aria-labelledby="correlationHeading">
+        <div class="correlation-header">
+            <h2 id="correlationHeading">Correlation Study: Direct vs. Estimated Volume</h2>
+            <a href="/api/correlation/export" class="btn-secondary" download="correlation_study.csv">Export CSV</a>
+        </div>
+
+        <div class="correlation-layout">
+            <div class="corr-card">
+                <h3 id="corrFormHeading">Add Direct Volume Measure</h3>
+                <form id="correlationDirectForm" aria-labelledby="corrFormHeading" novalidate>
+                    <div class="field">
+                        <label for="corrRunSelect">Sample Run <span aria-hidden="true">*</span></label>
+                        <span id="corrRunHint" class="field-hint">Select a processed sample run to pair its estimate with a direct measurement.</span>
+                        <select id="corrRunSelect" name="run_id" required aria-describedby="corrRunHint" data-error="corrRunError">
+                            <option value="">Loading runs…</option>
+                        </select>
+                        <div id="corrRunError" class="error-msg">
+                            <span role="img" aria-label="Error">❌</span> Select a processed sample run first.
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label for="corrDirectVolume">Direct Volume (cm³) <span aria-hidden="true">*</span></label>
+                        <span id="corrDirectHint" class="field-hint">Reference volume measured directly in cm³ (e.g., water displacement).</span>
+                        <input type="number" id="corrDirectVolume" name="direct_volume_cm3"
+                               min="0.0001" step="any" inputmode="decimal" required
+                               aria-describedby="corrDirectHint" data-error="corrDirectVolError">
+                        <div id="corrDirectVolError" class="error-msg">
+                            <span role="img" aria-label="Error">❌</span> Enter a positive volume in cm³ (greater than 0).
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label for="corrSampleName">Sample Name / ID (Optional)</label>
+                        <input type="text" id="corrSampleName" name="sample_name" maxlength="80">
+                    </div>
+
+                    <div class="field">
+                        <label for="corrDirectMethod">Direct Method (Optional)</label>
+                        <input type="text" id="corrDirectMethod" name="direct_method" list="directMethodOptions" maxlength="80">
+                    </div>
+
+                    <button type="submit" id="btnSaveCorrDirect">Save &amp; Update Correlation</button>
+                    <div id="corrFormStatus" class="status-banner" role="status" aria-live="polite"></div>
+                </form>
+            </div>
+
+            <div class="corr-card">
+                <h3>Correlation Metrics &amp; Scatter Plot</h3>
+                <div id="corrStatsGrid" class="stats-grid">
+                    <div class="stat-tile">
+                        <div class="stat-label">Paired Samples (N)</div>
+                        <div class="stat-value" id="statN">0</div>
+                        <div class="stat-sub">Runs with both values</div>
+                    </div>
+                    <div class="stat-tile">
+                        <div class="stat-label">Pearson r</div>
+                        <div class="stat-value" id="statPearsonR">—</div>
+                        <div class="stat-sub" id="statPearsonP">Need N ≥ 2</div>
+                    </div>
+                    <div class="stat-tile">
+                        <div class="stat-label">R² (Fit)</div>
+                        <div class="stat-value" id="statR2">—</div>
+                        <div class="stat-sub" id="statFitEq">Est = m · Direct + b</div>
+                    </div>
+                    <div class="stat-tile">
+                        <div class="stat-label">Spearman ρ</div>
+                        <div class="stat-value" id="statSpearmanRho">—</div>
+                        <div class="stat-sub" id="statSpearmanP">Rank correlation</div>
+                    </div>
+                    <div class="stat-tile">
+                        <div class="stat-label">MAE / RMSE</div>
+                        <div class="stat-value" id="statMaeRmse">—</div>
+                        <div class="stat-sub" id="statBias">Mean bias: —</div>
+                    </div>
+                    <div class="stat-tile">
+                        <div class="stat-label">MAPE</div>
+                        <div class="stat-value" id="statMape">—</div>
+                        <div class="stat-sub">Mean abs. % error</div>
+                    </div>
+                </div>
+
+                <figure class="plot-figure">
+                    <svg id="correlationPlot" role="img" aria-labelledby="plotTitle" viewBox="0 0 640 360">
+                        <title id="plotTitle">Scatter plot of estimated volume versus direct-method volume</title>
+                    </svg>
+                    <div id="plotTooltip" class="plot-tooltip" hidden></div>
+                    <figcaption id="plotCaption">Add direct measurements for at least 2 samples to inspect the correlation and linear regression fit.</figcaption>
+                </figure>
+            </div>
+        </div>
+
+        <div tabindex="0" role="region" aria-labelledby="corrTableCaption" class="table-wrapper">
+            <table class="corr-table">
+                <caption id="corrTableCaption">Paired Direct vs. Estimated Sample Volumes</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Sample / Run</th>
+                        <th scope="col">Algorithm</th>
+                        <th scope="col">Direct (cm³)</th>
+                        <th scope="col">Estimated (cm³)</th>
+                        <th scope="col">Diff (cm³)</th>
+                        <th scope="col">Error (%)</th>
+                        <th scope="col">Method</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="corrTableBody">
+                    <tr>
+                        <td colspan="8" style="color: var(--text-muted); text-align: center;">No paired measurements recorded yet.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
 
 <script>
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -750,6 +1331,7 @@ async function computeVolumeFromSelection() {
             ]);
             updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3);
             setClusterStatus(`Volume updated — ${selectedCodes.xy.length} XY · ${selectedCodes.yz.length} YZ · ${selectedCodes.xz.length} XZ clusters used.`);
+            refreshCorrelationStudy(currentRunId);
         } else {
             setClusterStatus(`Error: ${data.detail}`);
         }
@@ -920,6 +1502,7 @@ async function updateMask(view) {
         if (res.ok) {
             await loadImage(view, data.mask_url, true);
             updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3);
+            refreshCorrelationStudy(currentRunId);
         }
     } catch (e) { console.error('Failed to update mask', e); }
 }
@@ -927,6 +1510,13 @@ async function updateMask(view) {
 // ── Upload form ───────────────────────────────────────────────────────────────
 document.getElementById('uploadForm').addEventListener('submit', async e => {
     e.preventDefault();
+    const form = e.currentTarget;
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        form.querySelector(':invalid')?.focus();
+        return;
+    }
+
     const btn = document.getElementById('btnUpload');
     btn.textContent = 'Processing…'; btn.disabled = true;
 
@@ -934,6 +1524,9 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
     const arm_length_cm   = parseFloat(document.getElementById('uploadArmLength').value) || 20.0;
     const alpha           = parseInt(document.getElementById('uploadSvdAlpha').value, 10) || 16;
     const min_cluster_pct = parseFloat(document.getElementById('uploadSvdPct').value) || 1.0;
+    const directVolRaw    = document.getElementById('uploadDirectVolume').value.trim();
+    const sampleNameRaw   = document.getElementById('uploadSampleName').value.trim();
+    const directMethodRaw = document.getElementById('uploadDirectMethod').value.trim();
 
     const fd = new FormData();
     fd.append('photo_xy',        document.getElementById('photo_xy').files[0]);
@@ -943,6 +1536,9 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
     fd.append('arm_length_cm',   arm_length_cm);
     fd.append('alpha',           alpha);
     fd.append('min_cluster_pct', min_cluster_pct);
+    if (directVolRaw)    fd.append('direct_volume_cm3', directVolRaw);
+    if (sampleNameRaw)   fd.append('sample_name',       sampleNameRaw);
+    if (directMethodRaw) fd.append('direct_method',     directMethodRaw);
 
     try {
         const res  = await fetch('/api/segment', { method: 'POST', body: fd });
@@ -953,6 +1549,15 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
             document.getElementById('focal_length').value = data.focal_length.toFixed(2);
             document.getElementById('workspaceArmLength').value = arm_length_cm;
             updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3);
+
+            document.getElementById('wsDirectVolume').value = data.direct_volume_cm3 ?? '';
+            document.getElementById('wsSampleName').value   = data.sample_name ?? '';
+            document.getElementById('wsDirectMethod').value = data.direct_method ?? '';
+            const wsStatus = document.getElementById('wsDirectStatus');
+            wsStatus.textContent = data.direct_volume_cm3 != null
+                ? `Saved direct volume (${data.direct_volume_cm3} cm³).`
+                : '';
+            wsStatus.className = 'status-banner' + (data.direct_volume_cm3 != null ? ' success' : '');
 
             await Promise.all([
                 loadImage('xy', data.images.xy),
@@ -975,6 +1580,7 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
 
             document.getElementById('step1').classList.remove('active');
             document.getElementById('workspace').classList.add('active');
+            await refreshCorrelationStudy(currentRunId);
         } else {
             alert('Error: ' + data.detail);
         }
@@ -1020,6 +1626,7 @@ document.getElementById('btnRegenerate').addEventListener('click', async () => {
             } else {
                 document.getElementById('svdClusterExplorer').style.display = 'none';
             }
+            refreshCorrelationStudy(currentRunId);
         }
     } catch (err) { alert('Failed to resegment.'); }
 
@@ -1039,9 +1646,563 @@ document.getElementById('btnRecalculate').addEventListener('click', async () => 
             body: JSON.stringify({ run_id: currentRunId, focal_length, arm_length_cm }),
         });
         const data = await res.json();
-        if (res.ok) updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3);
+        if (res.ok) {
+            updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3);
+            refreshCorrelationStudy(currentRunId);
+        }
     } catch (e) { console.error(e); }
     btn.textContent = 'Recalculate Volume'; btn.disabled = false;
+});
+
+// ── Accessible post-interaction validation (ARIA + :user-invalid) ──────────────
+(() => {
+    const linkError = (el, shown) => {
+        const errorId = el.dataset.error;
+        if (!errorId) return;
+        const ids = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter(id => id && id !== errorId);
+        if (shown) ids.push(errorId);
+        if (ids.length) el.setAttribute('aria-describedby', ids.join(' '));
+        else el.removeAttribute('aria-describedby');
+    };
+
+    const announcer = document.createElement('div');
+    announcer.setAttribute('aria-live', 'polite');
+    announcer.classList.add('visually-hidden');
+    document.body.append(announcer);
+    let announceTimer;
+    let announcedField;
+
+    const spokenText = (node) => {
+        const copy = node.cloneNode(true);
+        copy.querySelectorAll('[aria-hidden="true"]').forEach(n => n.remove());
+        copy.querySelectorAll('[role="img"][aria-label]').forEach(n => n.replaceWith(`${n.getAttribute('aria-label')}: `));
+        return copy.textContent.replace(/\s+/g, ' ').trim();
+    };
+
+    const announceError = (el) => {
+        const error = el.dataset.error ? document.getElementById(el.dataset.error) : null;
+        if (!error) return;
+        const label = el.labels?.[0] ? `${spokenText(el.labels[0])}: ` : '';
+        clearTimeout(announceTimer);
+        announcer.textContent = '';
+        announcedField = el;
+        announceTimer = setTimeout(() => { announcer.textContent = label + spokenText(error); }, 500);
+    };
+
+    const supportsUserInvalid = CSS.supports('selector(:user-invalid)');
+    const dirtyState = new WeakMap();
+    const flagged = new WeakSet();
+    const announced = new WeakSet();
+
+    const isFieldInvalid = (el) => {
+        if (supportsUserInvalid) return el.matches(':user-invalid');
+        return el.classList.contains('user-invalid-fallback');
+    };
+
+    const syncAria = (el, announce = false) => {
+        if (!el.matches?.('input, select, textarea')) return;
+        if (!supportsUserInvalid && el.checkValidity) {
+            const st = dirtyState.get(el);
+            if (st?.hasBlurred) {
+                const ok = el.validity.valid;
+                el.classList.toggle('user-invalid-fallback', !ok);
+                el.classList.toggle('user-valid-fallback', ok);
+            }
+        }
+        const invalid = isFieldInvalid(el);
+        if (invalid) {
+            if (announce && !announced.has(el)) {
+                announceError(el);
+                announced.add(el);
+            }
+            el.setAttribute('aria-invalid', 'true');
+            linkError(el, true);
+            flagged.add(el);
+        } else if (flagged.has(el) || el.getAttribute('aria-invalid') !== 'true') {
+            el.setAttribute('aria-invalid', 'false');
+            linkError(el, false);
+            flagged.delete(el);
+            announced.delete(el);
+            if (announcedField === el) {
+                clearTimeout(announceTimer);
+                announcer.textContent = '';
+            }
+        }
+    };
+
+    document.querySelectorAll('input, select, textarea').forEach(el => syncAria(el));
+    document.addEventListener('blur', (e) => {
+        const el = e.target;
+        if (!supportsUserInvalid && el.checkValidity) {
+            const st = dirtyState.get(el) || { hasInteracted: false, hasBlurred: false };
+            st.hasBlurred = true;
+            dirtyState.set(el, st);
+        }
+        syncAria(el, true);
+    }, true);
+    document.addEventListener('input', (e) => {
+        const el = e.target;
+        if (!supportsUserInvalid && el.checkValidity) {
+            const st = dirtyState.get(el) || { hasInteracted: false, hasBlurred: false };
+            st.hasInteracted = true;
+            dirtyState.set(el, st);
+        }
+        if (el.hasAttribute('aria-invalid')) syncAria(el);
+    });
+    document.addEventListener('change', (e) => syncAria(e.target, true), true);
+    document.addEventListener('invalid', (e) => {
+        const el = e.target;
+        if (!supportsUserInvalid && el.checkValidity) {
+            dirtyState.set(el, { hasInteracted: true, hasBlurred: true });
+        }
+        announced.add(el);
+        syncAria(el);
+    }, true);
+    document.addEventListener('reset', (e) => {
+        setTimeout(() => [...e.target.elements].forEach(el => {
+            dirtyState.delete(el);
+            el.classList.remove('user-invalid-fallback', 'user-valid-fallback');
+            syncAria(el);
+        }));
+    }, true);
+})();
+
+// ── Direct Volume Measurement & Correlation Study ──────────────────────────────
+let latestCorrelation = { runs: [], paired: [], stats: {} };
+
+function formatMetric(val, digits = 3) {
+    return (val === null || val === undefined || Number.isNaN(val)) ? '—' : Number(val).toFixed(digits);
+}
+
+function syncCorrFormFromRun(runId) {
+    const run = latestCorrelation.runs.find(r => r.run_id === runId);
+    const volInput    = document.getElementById('corrDirectVolume');
+    const nameInput   = document.getElementById('corrSampleName');
+    const methodInput = document.getElementById('corrDirectMethod');
+    if (!run) {
+        volInput.value = '';
+        nameInput.value = '';
+        methodInput.value = '';
+        return;
+    }
+    volInput.value    = run.direct_volume_cm3 != null ? run.direct_volume_cm3 : '';
+    nameInput.value   = run.sample_name || '';
+    methodInput.value = run.direct_method || '';
+}
+
+function syncWorkspaceFormFromRuns() {
+    if (!currentRunId) return;
+    const run = latestCorrelation.runs.find(r => r.run_id === currentRunId);
+    if (!run) return;
+    if (run.direct_volume_cm3 != null) {
+        document.getElementById('wsDirectVolume').value = run.direct_volume_cm3;
+    }
+    if (run.sample_name) {
+        document.getElementById('wsSampleName').value = run.sample_name;
+    }
+    if (run.direct_method) {
+        document.getElementById('wsDirectMethod').value = run.direct_method;
+    }
+}
+
+function populateRunSelect(runs, preferredRunId = null) {
+    const select = document.getElementById('corrRunSelect');
+    const previous = select.value;
+    select.innerHTML = '';
+
+    if (!runs.length) {
+        const opt = new Option('No processed samples yet — upload images above first', '');
+        select.add(opt);
+        select.value = '';
+        syncCorrFormFromRun('');
+        return;
+    }
+
+    runs.forEach(run => {
+        const label = run.sample_name ? `${run.sample_name} (${run.run_id})` : run.run_id;
+        const estText = run.estimated_volume_cm3 != null ? `${Number(run.estimated_volume_cm3).toFixed(2)} cm³` : '—';
+        const directTag = run.direct_volume_cm3 != null ? ` · Direct: ${Number(run.direct_volume_cm3).toFixed(2)} cm³` : '';
+        select.add(new Option(`${label} — Est: ${estText}${directTag}`, run.run_id));
+    });
+
+    const targetId = [preferredRunId, currentRunId, previous, runs[0].run_id]
+        .find(id => id && runs.some(r => r.run_id === id));
+    select.value = targetId || runs[0].run_id;
+    syncCorrFormFromRun(select.value);
+}
+
+function renderStats(stats) {
+    const n = stats.n ?? 0;
+    document.getElementById('statN').textContent = String(n);
+    document.getElementById('statPearsonR').textContent = formatMetric(stats.pearson_r, 4);
+    document.getElementById('statPearsonP').textContent = stats.pearson_p != null
+        ? `p = ${Number(stats.pearson_p).toFixed(4)}`
+        : (n < 2 ? 'Need N ≥ 2' : 'Constant values');
+
+    document.getElementById('statR2').textContent = formatMetric(stats.r_squared, 4);
+    if (stats.slope != null && stats.intercept != null) {
+        const sign = stats.intercept >= 0 ? '+' : '−';
+        document.getElementById('statFitEq').textContent =
+            `Est = ${Number(stats.slope).toFixed(3)}·Direct ${sign} ${Math.abs(stats.intercept).toFixed(2)}`;
+    } else {
+        document.getElementById('statFitEq').textContent = 'Est = m · Direct + b';
+    }
+
+    document.getElementById('statSpearmanRho').textContent = formatMetric(stats.spearman_rho, 4);
+    document.getElementById('statSpearmanP').textContent = stats.spearman_p != null
+        ? `p = ${Number(stats.spearman_p).toFixed(4)}`
+        : 'Rank correlation';
+
+    document.getElementById('statMaeRmse').textContent = (stats.mae_cm3 != null && stats.rmse_cm3 != null)
+        ? `${Number(stats.mae_cm3).toFixed(2)} / ${Number(stats.rmse_cm3).toFixed(2)}`
+        : '—';
+    document.getElementById('statBias').textContent = stats.mean_bias_cm3 != null
+        ? `Mean bias: ${stats.mean_bias_cm3 >= 0 ? '+' : ''}${Number(stats.mean_bias_cm3).toFixed(2)} cm³`
+        : 'Mean bias: —';
+
+    document.getElementById('statMape').textContent = stats.mape_pct != null
+        ? `${Number(stats.mape_pct).toFixed(2)}%`
+        : '—';
+}
+
+function renderScatterPlot(paired, stats) {
+    const svg = document.getElementById('correlationPlot');
+    const caption = document.getElementById('plotCaption');
+    const tooltip = document.getElementById('plotTooltip');
+    tooltip.hidden = true;
+
+    const svgNs = 'http://www.w3.org/2000/svg';
+    const mk = (tag, attrs = {}, text = null) => {
+        const el = document.createElementNS(svgNs, tag);
+        Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, String(v)));
+        if (text !== null) el.textContent = text;
+        return el;
+    };
+
+    const titleEl = svg.querySelector('title');
+    svg.innerHTML = '';
+    if (titleEl) svg.appendChild(titleEl);
+
+    const W = 640, H = 360;
+    const pad = { left: 66, right: 24, top: 28, bottom: 52 };
+    const plotW = W - pad.left - pad.right;
+    const plotH = H - pad.top - pad.bottom;
+
+    if (!paired.length) {
+        svg.appendChild(mk('rect', { x: pad.left, y: pad.top, width: plotW, height: plotH, rx: 6, fill: 'none', stroke: '#334155', 'stroke-dasharray': '4 4' }));
+        svg.appendChild(mk('text', {
+            x: W / 2, y: H / 2, 'text-anchor': 'middle', fill: '#94a3b8', 'font-size': 14
+        }, 'No paired samples yet. Save a direct measurement to plot correlation.'));
+        caption.textContent = 'Add direct measurements for at least 2 samples to inspect the correlation and linear regression fit.';
+        return;
+    }
+
+    const xs = paired.map(p => Number(p.direct_volume_cm3));
+    const ys = paired.map(p => Number(p.estimated_volume_cm3));
+    const maxVal = Math.max(...xs, ...ys, 1);
+    const minVal = Math.min(0, ...xs, ...ys);
+    const span = (maxVal - minVal) || 1;
+    const domMin = minVal;
+    const domMax = maxVal + span * 0.08;
+    const domSpan = domMax - domMin;
+
+    const xPx = v => pad.left + ((v - domMin) / domSpan) * plotW;
+    const yPx = v => pad.top + plotH - ((v - domMin) / domSpan) * plotH;
+
+    // Grid & ticks
+    const ticks = 5;
+    for (let i = 0; i <= ticks; i++) {
+        const val = domMin + (domSpan * i) / ticks;
+        const gx = xPx(val);
+        const gy = yPx(val);
+        svg.appendChild(mk('line', { x1: gx, y1: pad.top, x2: gx, y2: pad.top + plotH, stroke: '#1e293b', 'stroke-width': 1 }));
+        svg.appendChild(mk('line', { x1: pad.left, y1: gy, x2: pad.left + plotW, y2: gy, stroke: '#1e293b', 'stroke-width': 1 }));
+        svg.appendChild(mk('text', { x: gx, y: pad.top + plotH + 18, 'text-anchor': 'middle', fill: '#94a3b8', 'font-size': 11 }, val.toFixed(1)));
+        svg.appendChild(mk('text', { x: pad.left - 8, y: gy + 4, 'text-anchor': 'end', fill: '#94a3b8', 'font-size': 11 }, val.toFixed(1)));
+    }
+
+    // Axes
+    svg.appendChild(mk('line', { x1: pad.left, y1: pad.top + plotH, x2: pad.left + plotW, y2: pad.top + plotH, stroke: '#64748b', 'stroke-width': 1.5 }));
+    svg.appendChild(mk('line', { x1: pad.left, y1: pad.top, x2: pad.left, y2: pad.top + plotH, stroke: '#64748b', 'stroke-width': 1.5 }));
+
+    // Axis labels
+    svg.appendChild(mk('text', { x: pad.left + plotW / 2, y: H - 10, 'text-anchor': 'middle', fill: '#cbd5e1', 'font-size': 12, 'font-weight': 600 }, 'Direct-Method Volume (cm³)'));
+    svg.appendChild(mk('text', {
+        x: 16, y: pad.top + plotH / 2,
+        transform: `rotate(-90 16 ${pad.top + plotH / 2})`,
+        'text-anchor': 'middle', fill: '#cbd5e1', 'font-size': 12, 'font-weight': 600
+    }, 'Estimated Volume (cm³)'));
+
+    // 1:1 identity line
+    svg.appendChild(mk('line', {
+        x1: xPx(domMin), y1: yPx(domMin),
+        x2: xPx(domMax), y2: yPx(domMax),
+        stroke: '#94a3b8', 'stroke-width': 1.5, 'stroke-dasharray': '6 4', opacity: 0.75
+    }));
+
+    // OLS regression line
+    if (stats.slope != null && stats.intercept != null) {
+        const x1 = domMin, x2 = domMax;
+        const y1 = stats.slope * x1 + stats.intercept;
+        const y2 = stats.slope * x2 + stats.intercept;
+        svg.appendChild(mk('line', {
+            x1: xPx(x1), y1: yPx(y1),
+            x2: xPx(x2), y2: yPx(y2),
+            stroke: '#3b82f6', 'stroke-width': 2.2
+        }));
+    }
+
+    // Legend
+    const legX = pad.left + 12, legY = pad.top + 8;
+    svg.appendChild(mk('line', { x1: legX, y1: legY, x2: legX + 20, y2: legY, stroke: '#94a3b8', 'stroke-width': 1.5, 'stroke-dasharray': '5 3' }));
+    svg.appendChild(mk('text', { x: legX + 26, y: legY + 4, fill: '#94a3b8', 'font-size': 11 }, '1:1 Ideal (y = x)'));
+    if (stats.slope != null) {
+        svg.appendChild(mk('line', { x1: legX + 125, y1: legY, x2: legX + 145, y2: legY, stroke: '#3b82f6', 'stroke-width': 2.2 }));
+        svg.appendChild(mk('text', { x: legX + 151, y: legY + 4, fill: '#93c5fd', 'font-size': 11 }, 'Linear Fit'));
+    }
+
+    // Sample points
+    const figRect = svg.closest('.plot-figure');
+    paired.forEach(pt => {
+        const cx = xPx(Number(pt.direct_volume_cm3));
+        const cy = yPx(Number(pt.estimated_volume_cm3));
+        const label = pt.sample_name || pt.run_id;
+        const circle = mk('circle', {
+            cx, cy, r: 6,
+            fill: '#10b981', stroke: '#0f172a', 'stroke-width': 1.5,
+            tabindex: 0, cursor: 'pointer',
+            'aria-label': `${label}: Direct ${pt.direct_volume_cm3} cm³, Estimated ${pt.estimated_volume_cm3} cm³`
+        });
+        circle.appendChild(mk('title', {}, `${label}\nDirect: ${pt.direct_volume_cm3} cm³\nEstimated: ${pt.estimated_volume_cm3} cm³\nError: ${pt.rel_error_pct}%`));
+
+        const showTip = () => {
+            const box = figRect.getBoundingClientRect();
+            const cBox = circle.getBoundingClientRect();
+            tooltip.innerHTML = '';
+            const strong = document.createElement('strong');
+            strong.textContent = label;
+            tooltip.appendChild(strong);
+            tooltip.appendChild(document.createElement('br'));
+            tooltip.appendChild(document.createTextNode(`Direct: ${Number(pt.direct_volume_cm3).toFixed(2)} cm³`));
+            tooltip.appendChild(document.createElement('br'));
+            tooltip.appendChild(document.createTextNode(`Estimated: ${Number(pt.estimated_volume_cm3).toFixed(2)} cm³`));
+            tooltip.appendChild(document.createElement('br'));
+            tooltip.appendChild(document.createTextNode(`Rel. error: ${pt.rel_error_pct >= 0 ? '+' : ''}${pt.rel_error_pct}%`));
+            tooltip.hidden = false;
+            tooltip.style.left = `${Math.min(Math.max(8, cBox.left - box.left + 12), box.width - 180)}px`;
+            tooltip.style.top  = `${Math.max(8, cBox.top - box.top - 10)}px`;
+        };
+        const hideTip = () => { tooltip.hidden = true; };
+
+        circle.addEventListener('mouseenter', showTip);
+        circle.addEventListener('focus', showTip);
+        circle.addEventListener('mouseleave', hideTip);
+        circle.addEventListener('blur', hideTip);
+        svg.appendChild(circle);
+    });
+
+    if (paired.length === 1) {
+        caption.textContent = '1 paired sample plotted against the 1:1 identity line. Add at least 1 more direct measurement to compute Pearson r, R², and the regression line.';
+    } else {
+        caption.textContent = `Correlation across N = ${stats.n} samples: Pearson r = ${formatMetric(stats.pearson_r, 4)}, R² = ${formatMetric(stats.r_squared, 4)}, RMSE = ${formatMetric(stats.rmse_cm3, 2)} cm³.`;
+    }
+}
+
+function renderCorrelationTable(paired) {
+    const tbody = document.getElementById('corrTableBody');
+    tbody.innerHTML = '';
+
+    if (!paired.length) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 8;
+        td.style.color = 'var(--text-muted)';
+        td.style.textAlign = 'center';
+        td.textContent = 'No paired measurements recorded yet.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+    }
+
+    paired.forEach(row => {
+        const tr = document.createElement('tr');
+
+        const th = document.createElement('th');
+        th.scope = 'row';
+        th.textContent = row.sample_name ? `${row.sample_name} (${row.run_id})` : row.run_id;
+        tr.appendChild(th);
+
+        const addCell = (txt) => {
+            const td = document.createElement('td');
+            td.textContent = txt;
+            tr.appendChild(td);
+        };
+
+        addCell(row.strategy || '—');
+        addCell(Number(row.direct_volume_cm3).toFixed(2));
+        addCell(Number(row.estimated_volume_cm3).toFixed(2));
+        addCell(`${row.error_cm3 >= 0 ? '+' : ''}${Number(row.error_cm3).toFixed(2)}`);
+        addCell(`${row.rel_error_pct >= 0 ? '+' : ''}${Number(row.rel_error_pct).toFixed(2)}%`);
+        addCell(row.direct_method || '—');
+
+        const actionTd = document.createElement('td');
+        const wrap = document.createElement('div');
+        wrap.className = 'table-actions';
+
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'btn-mini';
+        editBtn.dataset.action = 'edit';
+        editBtn.dataset.runId = row.run_id;
+        editBtn.textContent = 'Edit';
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'btn-mini danger';
+        delBtn.dataset.action = 'delete';
+        delBtn.dataset.runId = row.run_id;
+        delBtn.textContent = 'Remove';
+
+        wrap.append(editBtn, delBtn);
+        actionTd.appendChild(wrap);
+        tr.appendChild(actionTd);
+        tbody.appendChild(tr);
+    });
+}
+
+function renderCorrelationStudy(data, preferredRunId = null) {
+    latestCorrelation = data;
+    populateRunSelect(data.runs || [], preferredRunId);
+    syncWorkspaceFormFromRuns();
+    renderStats(data.stats || {});
+    renderScatterPlot(data.paired || [], data.stats || {});
+    renderCorrelationTable(data.paired || []);
+}
+
+async function refreshCorrelationStudy(preferredRunId = null) {
+    try {
+        const res = await fetch('/api/correlation');
+        if (!res.ok) return;
+        const data = await res.json();
+        renderCorrelationStudy(data, preferredRunId);
+    } catch (err) {
+        console.error('Failed to load correlation study', err);
+    }
+}
+
+async function submitDirectVolume({ runId, directVolume, sampleName, directMethod, submitBtn, defaultLabel, statusEl, formEl }) {
+    if (!runId) {
+        statusEl.textContent = 'Select or process a sample run first.';
+        statusEl.className = 'status-banner error';
+        return;
+    }
+    if (!formEl.checkValidity()) {
+        formEl.reportValidity();
+        formEl.querySelector(':invalid')?.focus();
+        return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving…';
+    statusEl.textContent = '';
+    statusEl.className = 'status-banner';
+
+    try {
+        const res = await fetch('/api/direct-volume', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                run_id: runId,
+                direct_volume_cm3: parseFloat(directVolume),
+                sample_name: sampleName || null,
+                direct_method: directMethod || null,
+            }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+            const m = data.measurement;
+            const err = m.estimated_volume_cm3 - m.direct_volume_cm3;
+            const rel = ((err / m.direct_volume_cm3) * 100).toFixed(2);
+            statusEl.textContent = `Saved (${m.direct_volume_cm3} cm³). Residual: ${err >= 0 ? '+' : ''}${err.toFixed(2)} cm³ (${err >= 0 ? '+' : ''}${rel}%).`;
+            statusEl.className = 'status-banner success';
+            renderCorrelationStudy(data.correlation, runId);
+        } else {
+            statusEl.textContent = `Error: ${data.detail || 'Could not save measurement.'}`;
+            statusEl.className = 'status-banner error';
+        }
+    } catch (err) {
+        console.error(err);
+        statusEl.textContent = 'Connection error while saving direct measurement.';
+        statusEl.className = 'status-banner error';
+    }
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = defaultLabel;
+}
+
+document.getElementById('workspaceDirectForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await submitDirectVolume({
+        runId: currentRunId,
+        directVolume: document.getElementById('wsDirectVolume').value,
+        sampleName: document.getElementById('wsSampleName').value.trim(),
+        directMethod: document.getElementById('wsDirectMethod').value.trim(),
+        submitBtn: document.getElementById('btnSaveWsDirect'),
+        defaultLabel: 'Save Direct Measure',
+        statusEl: document.getElementById('wsDirectStatus'),
+        formEl: e.currentTarget,
+    });
+});
+
+document.getElementById('correlationDirectForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await submitDirectVolume({
+        runId: document.getElementById('corrRunSelect').value,
+        directVolume: document.getElementById('corrDirectVolume').value,
+        sampleName: document.getElementById('corrSampleName').value.trim(),
+        directMethod: document.getElementById('corrDirectMethod').value.trim(),
+        submitBtn: document.getElementById('btnSaveCorrDirect'),
+        defaultLabel: 'Save & Update Correlation',
+        statusEl: document.getElementById('corrFormStatus'),
+        formEl: e.currentTarget,
+    });
+});
+
+document.getElementById('corrRunSelect').addEventListener('change', (e) => {
+    syncCorrFormFromRun(e.target.value);
+});
+
+document.getElementById('corrTableBody').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const runId = btn.dataset.runId;
+    const action = btn.dataset.action;
+
+    if (action === 'edit') {
+        const select = document.getElementById('corrRunSelect');
+        select.value = runId;
+        syncCorrFormFromRun(runId);
+        document.getElementById('corrDirectVolume').focus();
+    } else if (action === 'delete') {
+        btn.disabled = true;
+        try {
+            const res = await fetch(`/api/direct-volume/${encodeURIComponent(runId)}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (res.ok) {
+                renderCorrelationStudy(data.correlation);
+                const statusEl = document.getElementById('corrFormStatus');
+                statusEl.textContent = `Removed direct measurement for ${runId}.`;
+                statusEl.className = 'status-banner';
+            }
+        } catch (err) {
+            console.error(err);
+        }
+        btn.disabled = false;
+    }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    refreshCorrelationStudy();
 });
 </script>
 </body>
