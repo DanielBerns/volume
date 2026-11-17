@@ -44,6 +44,23 @@ def test_find_trihedron_keypoints_synthetic():
     assert kp.px_per_cm > 10
 
 
+def test_find_trihedron_keypoints_200mm_5mm_bar():
+    # 200 mm (20 cm) arm length, 5 mm (0.5 cm) arm width at 20 px/cm -> 400 px length, 10 px width
+    img = np.zeros((600, 600, 3), dtype=np.uint8)
+    # Vertex at (100, 450) in XZ view: X arm goes right to 500, Z arm goes up to 50
+    img[445:455, 100:500] = (20, 20, 240)
+    img[50:450, 95:105] = (20, 20, 240)
+
+    kp = find_trihedron_keypoints(img, view="xz", arm_length_cm=20.0, arm_width_cm=0.5)
+    assert kp is not None
+    assert kp.image_shape == (600, 600)
+    assert kp.arm_width_px is not None
+    assert abs(kp.arm_width_px - 10.0) < 3.0
+    assert abs(kp.vertex[0] - 100.0) < 5.0
+    assert abs(kp.vertex[1] - 450.0) < 5.0
+    assert abs(kp.px_per_cm - 20.0) < 1.0
+
+
 def test_draw_trihedron_overlay():
     img = np.zeros((300, 300, 3), dtype=np.uint8)
     kp = TrihedronKeypoints(

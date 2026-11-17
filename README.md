@@ -1,6 +1,6 @@
 # Plant Volume Estimator (Volumen)
 
-A computer vision web application for estimating above-ground plant and vegetation volume from multi-view photographs (XY, YZ, XZ views). Supports calibrated metric 3D reconstruction ($\text{cm}^3$) using a red reference trihedron as well as visual hull estimation.
+A computer vision web application for estimating above-ground plant and vegetation volume from multi-view photographs (XY, YZ, XZ views). Supports calibrated metric 3D visual hull reconstruction ($\text{cm}^3$) and the upper/lower-bound projective volume estimation method of Chopin, Laga, & Miklavcic (2017) (`projective_bounds`), using a red reference trihedron.
 
 ## Installation
 
@@ -17,8 +17,9 @@ uv sync
 The application uses consolidated configuration in `pyproject.toml`.
 Operational directories:
 - Images and run metadata: `~/Info/volume/` (created automatically on first run).
-- Default trihedron arm length: `20.0 cm` (configurable per run via web UI or API parameter `arm_length_cm`).
-- Default trihedron bar width: `5 mm`.
+- Default trihedron arm length: `20.0 cm` (`200 mm`, configurable via `arm_length_cm`).
+- Default trihedron bar width: `0.5 cm` (`5 mm`, configurable via `arm_width_cm`).
+- Volume estimation methods: `visual_hull` (3D voxel carving) and `projective_bounds` (Chopin et al., 2017).
 - Output volume units: cubic centimeters ($\text{cm}^3$) and cubic meters ($\text{m}^3$).
 
 ## Initialization

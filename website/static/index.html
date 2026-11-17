@@ -810,9 +810,10 @@
             </div>
 
             <div class="form-group">
-                <label for="uploadStrategySelect">Segmentation Algorithm</label>
+                <label for="uploadStrategySelect">Segmentation &amp; Volume Algorithm</label>
                 <select id="uploadStrategySelect" name="strategy" onchange="toggleStrategyPanels('upload')">
                     <option value="trihedron" selected>Red Trihedron Reference (Calibrated &amp; Metric)</option>
+                    <option value="projective_bounds">Projective Bounds (Chopin et al. 2017) + Red Trihedron</option>
                     <option value="hsv">HSV Threshold (Fast &amp; Simple)</option>
                     <option value="grabcut">GrabCut (Automated CV)</option>
                     <option value="svdcodes">SVDCodes (SVD-based clustering)</option>
@@ -820,9 +821,17 @@
 
                 <div id="trihedronPanelUpload" class="tri-panel" style="display: block;">
                     <div class="tri-title">🔺 Red Trihedron Configuration</div>
-                    <label for="uploadArmLength">Physical Arm Length (cm)</label>
-                    <input type="number" id="uploadArmLength" name="arm_length_cm" min="1.0" max="100.0" step="0.1" value="20.0">
-                    <p class="hint" style="margin-top: 5px; margin-bottom: 0;">Calibrated reference arm length (default: 20.0 cm, 5 mm bar width).</p>
+                    <div class="svd-param-row">
+                        <div>
+                            <label for="uploadArmLength">Arm Length (cm)</label>
+                            <input type="number" id="uploadArmLength" name="arm_length_cm" min="1.0" max="100.0" step="0.1" value="20.0">
+                        </div>
+                        <div>
+                            <label for="uploadArmWidth">Arm Width (cm)</label>
+                            <input type="number" id="uploadArmWidth" name="arm_width_cm" min="0.1" max="20.0" step="0.1" value="0.5">
+                        </div>
+                    </div>
+                    <p class="hint" style="margin-top: 5px; margin-bottom: 0;">Calibrated reference trihedron (default: 20.0 cm / 200 mm length, 0.5 cm / 5 mm width).</p>
                 </div>
 
                 <div id="svdPanelUpload" class="svd-panel">
@@ -972,6 +981,7 @@
                     <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
                         (<span id="volumeOutput">0.000000</span> m³)
                     </div>
+                    <div id="volumeBoundsOutput" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px;" hidden></div>
                 </div>
 
                 <div class="form-group direct-measure-card">
@@ -1004,6 +1014,7 @@
                     <label for="strategySelect">Base Algorithm</label>
                     <select id="strategySelect" onchange="toggleStrategyPanels('workspace')">
                         <option value="trihedron" selected>Red Trihedron Reference (Calibrated &amp; Metric)</option>
+                        <option value="projective_bounds">Projective Bounds (Chopin et al. 2017) + Red Trihedron</option>
                         <option value="hsv">HSV Threshold (Fast &amp; Simple)</option>
                         <option value="grabcut">GrabCut (Automated CV)</option>
                         <option value="svdcodes">SVDCodes (SVD-based clustering)</option>
@@ -1011,8 +1022,16 @@
 
                     <div id="trihedronPanelWorkspace" class="tri-panel" style="display: block;">
                         <div class="tri-title">🔺 Red Trihedron Reference</div>
-                        <label for="workspaceArmLength">Physical Arm Length (cm)</label>
-                        <input type="number" id="workspaceArmLength" min="1.0" max="100.0" step="0.1" value="20.0">
+                        <div class="svd-param-row">
+                            <div>
+                                <label for="workspaceArmLength">Arm Length (cm)</label>
+                                <input type="number" id="workspaceArmLength" min="1.0" max="100.0" step="0.1" value="20.0">
+                            </div>
+                            <div>
+                                <label for="workspaceArmWidth">Arm Width (cm)</label>
+                                <input type="number" id="workspaceArmWidth" min="0.1" max="20.0" step="0.1" value="0.5">
+                            </div>
+                        </div>
                     </div>
 
                     <div id="svdPanelWorkspace" class="svd-panel">
@@ -1046,6 +1065,11 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="workspaceVolumeMethod">Volume Estimation Method</label>
+                    <select id="workspaceVolumeMethod" style="margin-bottom: 12px;">
+                        <option value="visual_hull">3D Visual Hull (Voxel Carving)</option>
+                        <option value="projective_bounds">Projective Bounds (Chopin et al., 2017)</option>
+                    </select>
                     <label for="focal_length">Camera Focal Length (mm)</label>
                     <input type="number" id="focal_length" step="0.1" value="50.0">
                     <p class="hint" style="margin-top:5px;">Auto-extracted from EXIF. Update and recalculate if incorrect.</p>
@@ -1194,13 +1218,18 @@ function toggleStrategyPanels(context) {
     const val = document.getElementById(selectId).value;
 
     const isSvd = val === 'svdcodes';
-    const isTri = val === 'trihedron';
+    const isTri = val === 'trihedron' || val === 'projective_bounds';
 
     document.getElementById(svdPanelId).style.display = isSvd ? 'block' : 'none';
     document.getElementById(triPanelId).style.display = isTri ? 'block' : 'none';
 
     if (context === 'workspace') {
         document.getElementById('svdClusterExplorer').style.display = isSvd ? 'block' : 'none';
+        if (val === 'projective_bounds') {
+            document.getElementById('workspaceVolumeMethod').value = 'projective_bounds';
+        } else if (val === 'trihedron') {
+            document.getElementById('workspaceVolumeMethod').value = 'visual_hull';
+        }
     }
 }
 
@@ -1309,6 +1338,8 @@ async function computeVolumeFromSelection() {
 
     const focal_length = parseFloat(document.getElementById('focal_length').value);
     const arm_length_cm = parseFloat(document.getElementById('workspaceArmLength').value) || 20.0;
+    const arm_width_cm = parseFloat(document.getElementById('workspaceArmWidth').value) || 0.5;
+    const volume_method = document.getElementById('workspaceVolumeMethod').value;
 
     try {
         const res  = await fetch('/api/compute-from-clusters', {
@@ -1318,6 +1349,8 @@ async function computeVolumeFromSelection() {
                 run_id: currentRunId,
                 focal_length,
                 arm_length_cm,
+                arm_width_cm,
+                volume_method,
                 selected_codes: selectedCodes,
             }),
         });
@@ -1329,7 +1362,7 @@ async function computeVolumeFromSelection() {
                 loadImage('yz', data.masks.yz, true),
                 loadImage('xz', data.masks.xz, true),
             ]);
-            updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3);
+            updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3, data.recon_meta);
             setClusterStatus(`Volume updated — ${selectedCodes.xy.length} XY · ${selectedCodes.yz.length} YZ · ${selectedCodes.xz.length} XZ clusters used.`);
             refreshCorrelationStudy(currentRunId);
         } else {
@@ -1476,7 +1509,7 @@ function loadImage(view, url, isMask = false) {
     });
 }
 
-function updateVolumeUI(volM3, volCm3) {
+function updateVolumeUI(volM3, volCm3, reconMeta = null) {
     if (volCm3 !== undefined && volCm3 !== null) {
         document.getElementById('volumeOutputCm3').innerText = parseFloat(volCm3).toFixed(2);
     } else if (volM3 !== undefined && volM3 !== null) {
@@ -1485,23 +1518,33 @@ function updateVolumeUI(volM3, volCm3) {
     if (volM3 !== undefined && volM3 !== null) {
         document.getElementById('volumeOutput').innerText = parseFloat(volM3).toFixed(6);
     }
+    const boundsEl = document.getElementById('volumeBoundsOutput');
+    if (reconMeta && reconMeta.lower_bound_cm3 !== undefined && reconMeta.upper_bound_cm3 !== undefined) {
+        boundsEl.textContent = `Lower: ${Number(reconMeta.lower_bound_cm3).toFixed(2)} cm³ · Upper: ${Number(reconMeta.upper_bound_cm3).toFixed(2)} cm³`;
+        boundsEl.hidden = false;
+    } else {
+        boundsEl.textContent = '';
+        boundsEl.hidden = true;
+    }
 }
 
 async function updateMask(view) {
     const focal_length = parseFloat(document.getElementById('focal_length').value);
     const arm_length_cm = parseFloat(document.getElementById('workspaceArmLength').value) || 20.0;
+    const arm_width_cm = parseFloat(document.getElementById('workspaceArmWidth').value) || 0.5;
+    const volume_method = document.getElementById('workspaceVolumeMethod').value;
     const fg_list = hints[view].fg.map(r => [r.x, r.y, r.w, r.h]);
     const bg_list = hints[view].bg.map(r => [r.x, r.y, r.w, r.h]);
     try {
         const res  = await fetch('/api/update-mask', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ run_id: currentRunId, view, focal_length, arm_length_cm, fg_rects: fg_list, bg_rects: bg_list }),
+            body: JSON.stringify({ run_id: currentRunId, view, focal_length, arm_length_cm, arm_width_cm, volume_method, fg_rects: fg_list, bg_rects: bg_list }),
         });
         const data = await res.json();
         if (res.ok) {
             await loadImage(view, data.mask_url, true);
-            updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3);
+            updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3, data.recon_meta);
             refreshCorrelationStudy(currentRunId);
         }
     } catch (e) { console.error('Failed to update mask', e); }
@@ -1522,6 +1565,7 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
 
     const strategy        = document.getElementById('uploadStrategySelect').value;
     const arm_length_cm   = parseFloat(document.getElementById('uploadArmLength').value) || 20.0;
+    const arm_width_cm    = parseFloat(document.getElementById('uploadArmWidth').value) || 0.5;
     const alpha           = parseInt(document.getElementById('uploadSvdAlpha').value, 10) || 16;
     const min_cluster_pct = parseFloat(document.getElementById('uploadSvdPct').value) || 1.0;
     const directVolRaw    = document.getElementById('uploadDirectVolume').value.trim();
@@ -1534,6 +1578,7 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
     fd.append('photo_xz',        document.getElementById('photo_xz').files[0]);
     fd.append('strategy',        strategy);
     fd.append('arm_length_cm',   arm_length_cm);
+    fd.append('arm_width_cm',    arm_width_cm);
     fd.append('alpha',           alpha);
     fd.append('min_cluster_pct', min_cluster_pct);
     if (directVolRaw)    fd.append('direct_volume_cm3', directVolRaw);
@@ -1548,7 +1593,11 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
             currentRunId = data.run_id;
             document.getElementById('focal_length').value = data.focal_length.toFixed(2);
             document.getElementById('workspaceArmLength').value = arm_length_cm;
-            updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3);
+            document.getElementById('workspaceArmWidth').value = arm_width_cm;
+            if (data.volume_method) {
+                document.getElementById('workspaceVolumeMethod').value = data.volume_method;
+            }
+            updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3, data.recon_meta);
 
             document.getElementById('wsDirectVolume').value = data.direct_volume_cm3 ?? '';
             document.getElementById('wsSampleName').value   = data.sample_name ?? '';
@@ -1599,10 +1648,12 @@ document.getElementById('btnRegenerate').addEventListener('click', async () => {
     const strategy        = document.getElementById('strategySelect').value;
     const focal_length    = parseFloat(document.getElementById('focal_length').value);
     const arm_length_cm   = parseFloat(document.getElementById('workspaceArmLength').value) || 20.0;
+    const arm_width_cm    = parseFloat(document.getElementById('workspaceArmWidth').value) || 0.5;
+    const volume_method   = document.getElementById('workspaceVolumeMethod').value;
     const alpha           = parseInt(document.getElementById('workspaceSvdAlpha').value, 10) || 16;
     const min_cluster_pct = parseFloat(document.getElementById('workspaceSvdPct').value) || 1.0;
 
-    const body = { run_id: currentRunId, strategy, focal_length, arm_length_cm };
+    const body = { run_id: currentRunId, strategy, focal_length, arm_length_cm, arm_width_cm, volume_method };
     if (strategy === 'svdcodes') { body.alpha = alpha; body.min_cluster_pct = min_cluster_pct; }
 
     try {
@@ -1619,7 +1670,10 @@ document.getElementById('btnRegenerate').addEventListener('click', async () => {
                 loadImage('yz', data.masks.yz, true),
                 loadImage('xz', data.masks.xz, true),
             ]);
-            updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3);
+            if (data.volume_method) {
+                document.getElementById('workspaceVolumeMethod').value = data.volume_method;
+            }
+            updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3, data.recon_meta);
 
             if (strategy === 'svdcodes' && data.clusters) {
                 renderClusterExplorer(data.clusters);
@@ -1633,21 +1687,23 @@ document.getElementById('btnRegenerate').addEventListener('click', async () => {
     btn.textContent = 'Re-run Algorithm'; btn.disabled = false;
 });
 
-// ── Recalculate volume (focal length or arm length change) ─────────────────────
+// ── Recalculate volume (focal length, arm length/width, or volume method change) ──
 document.getElementById('btnRecalculate').addEventListener('click', async () => {
     const btn = document.getElementById('btnRecalculate');
     btn.textContent = 'Calculating…'; btn.disabled = true;
     const focal_length = parseFloat(document.getElementById('focal_length').value);
     const arm_length_cm = parseFloat(document.getElementById('workspaceArmLength').value) || 20.0;
+    const arm_width_cm = parseFloat(document.getElementById('workspaceArmWidth').value) || 0.5;
+    const volume_method = document.getElementById('workspaceVolumeMethod').value;
     try {
         const res  = await fetch('/api/calculate-volume', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ run_id: currentRunId, focal_length, arm_length_cm }),
+            body: JSON.stringify({ run_id: currentRunId, focal_length, arm_length_cm, arm_width_cm, volume_method }),
         });
         const data = await res.json();
         if (res.ok) {
-            updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3);
+            updateVolumeUI(data.estimated_volume_m3, data.estimated_volume_cm3, data.recon_meta);
             refreshCorrelationStudy(currentRunId);
         }
     } catch (e) { console.error(e); }

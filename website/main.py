@@ -19,7 +19,11 @@ from pydantic import BaseModel, Field
 from scipy import stats
 
 from volumen.camera import extract_exif_metadata, get_focal_length
-from volumen.estimator import estimate_volume, estimate_volume_with_trihedron
+from volumen.estimator import (
+    estimate_volume,
+    estimate_volume_with_projective_bounds,
+    estimate_volume_with_trihedron,
+)
 from volumen.segmentation.strategy import (
     GrabCutStrategy,
     HSVThresholdStrategy,
@@ -261,7 +265,7 @@ def save_mask(mask: np.ndarray, path: Path) -> None:
 
 def _make_strategy(strategy_name: str):
     """Return the segmentation strategy object for the given name."""
-    if strategy_name == "trihedron":
+    if strategy_name in ("trihedron", "projective_bounds"):
         return TrihedronPlantSegmentationStrategy()
     elif strategy_name == "grabcut":
         return GrabCutStrategy()
@@ -269,6 +273,29 @@ def _make_strategy(strategy_name: str):
         return SVDCodesStrategy()
     else:
         return HSVThresholdStrategy()
+
+
+def _resolve_volume_method(
+    run_dir: Optional[Path] = None,
+    strategy: Optional[str] = None,
+    requested_method: Optional[str] = None,
+) -> str:
+    """Resolve active volume estimation method ('visual_hull' or 'projective_bounds')."""
+    if requested_method in ("visual_hull", "projective_bounds"):
+        return requested_method
+    if strategy == "projective_bounds":
+        return "projective_bounds"
+    if strategy in ("trihedron", "hsv", "grabcut", "svdcodes"):
+        return "visual_hull"
+    if run_dir is not None:
+        existing = _load_run_measurement(run_dir)
+        if existing is not None:
+            saved_method = existing.get("volume_method")
+            if saved_method in ("visual_hull", "projective_bounds"):
+                return saved_method
+            if existing.get("strategy") == "projective_bounds":
+                return "projective_bounds"
+    return "visual_hull"
 
 
 def _run_svd_clusters(
@@ -328,11 +355,14 @@ def _compute_volumes(
     masks: Dict[str, np.ndarray],
     focal_length: float,
     arm_length_cm: float = 20.0,
+    arm_width_cm: float = 0.5,
+    volume_method: str = "visual_hull",
 ) -> tuple[float, float, Dict[str, Any]]:
     """Compute (volume_cm3, volume_m3, recon_meta).
 
     Prioritizes calibrated trihedron reconstruction if keypoints exist for all 3 views.
-    Falls back to legacy visual hull with focal length.
+    Supports both 'visual_hull' and 'projective_bounds' (Chopin et al., 2017).
+    Falls back to legacy visual hull with focal length when trihedron keypoints are absent.
     """
     tri_kps: Dict[str, Optional[TrihedronKeypoints]] = {}
     for v in ["xy", "yz", "xz"]:
@@ -340,7 +370,12 @@ def _compute_volumes(
         if photo_file.exists():
             img_bgr = cv2.imread(str(photo_file))
             if img_bgr is not None:
-                tri_kps[v] = find_trihedron_keypoints(img_bgr, view=v, arm_length_cm=arm_length_cm)
+                tri_kps[v] = find_trihedron_keypoints(
+                    img_bgr,
+                    view=v,
+                    arm_length_cm=arm_length_cm,
+                    arm_width_cm=arm_width_cm,
+                )
 
     recon_meta: Dict[str, Any] = {}
     volume_cm3 = 0.0
@@ -348,15 +383,27 @@ def _compute_volumes(
 
     if all(tri_kps.get(v) is not None for v in ["xy", "yz", "xz"]):
         try:
-            volume_cm3, recon_meta = estimate_volume_with_trihedron(
-                mask_xy=masks["xy"],
-                mask_yz=masks["yz"],
-                mask_xz=masks["xz"],
-                kp_xy=tri_kps["xy"],
-                kp_yz=tri_kps["yz"],
-                kp_xz=tri_kps["xz"],
-                arm_length_cm=arm_length_cm,
-            )
+            if volume_method == "projective_bounds":
+                volume_cm3, recon_meta = estimate_volume_with_projective_bounds(
+                    mask_xy=masks["xy"],
+                    mask_yz=masks["yz"],
+                    mask_xz=masks["xz"],
+                    kp_xy=tri_kps["xy"],
+                    kp_yz=tri_kps["yz"],
+                    kp_xz=tri_kps["xz"],
+                    arm_length_cm=arm_length_cm,
+                    arm_width_cm=arm_width_cm,
+                )
+            else:
+                volume_cm3, recon_meta = estimate_volume_with_trihedron(
+                    mask_xy=masks["xy"],
+                    mask_yz=masks["yz"],
+                    mask_xz=masks["xz"],
+                    kp_xy=tri_kps["xy"],
+                    kp_yz=tri_kps["yz"],
+                    kp_xz=tri_kps["xz"],
+                    arm_length_cm=arm_length_cm,
+                )
             volume_m3 = volume_cm3 / 1e6
             return volume_cm3, volume_m3, recon_meta
         except Exception:
@@ -388,6 +435,8 @@ async def segment_images(
     photo_xz: UploadFile = File(...),
     strategy: str = Form("trihedron"),
     arm_length_cm: float = Form(20.0),
+    arm_width_cm: float = Form(0.5),
+    volume_method: Optional[str] = Form(None),
     alpha: int = Form(16),
     min_cluster_pct: float = Form(1.0),
     direct_volume_cm3: Optional[float] = Form(None),
@@ -397,6 +446,7 @@ async def segment_images(
     validated_direct = _validate_positive_volume(direct_volume_cm3)
     cleaned_sample = _clean_optional_text(sample_name)
     cleaned_method = _clean_optional_text(direct_method)
+    resolved_vol_method = _resolve_volume_method(strategy=strategy, requested_method=volume_method)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_id = f"run_{timestamp}"
@@ -439,6 +489,7 @@ async def segment_images(
             img_bgr,
             view=view,
             arm_length_cm=arm_length_cm,
+            arm_width_cm=arm_width_cm,
             focal_length_mm=focal_length,
         )
         tri_kps[view] = kp
@@ -450,6 +501,7 @@ async def segment_images(
             trihedron_data[view] = {
                 "vertex": kp.vertex,
                 "arm_length_px": kp.arm_length_px,
+                "arm_width_px": kp.arm_width_px,
                 "scale_px_per_cm": kp.px_per_cm,
                 "reproj_error_px": kp.reproj_error,
             }
@@ -463,7 +515,7 @@ async def segment_images(
             clusters[view] = view_clusters
             visible_codes = [c["code"] for c in view_clusters]
             masks[view] = _initial_svd_mask(run_dir, view, RESOLUTION, visible_codes)
-        elif strategy == "trihedron":
+        elif strategy in ("trihedron", "projective_bounds"):
             masks[view] = strategy_obj.create_mask(str(img_path), RESOLUTION)
         else:
             is_contrast = view != "xz"
@@ -487,6 +539,8 @@ async def segment_images(
         masks=masks,
         focal_length=focal_length,
         arm_length_cm=arm_length_cm,
+        arm_width_cm=arm_width_cm,
+        volume_method=resolved_vol_method,
     )
     est_cm3 = _normalize_float(round(volume_cm3, 2))
     est_m3 = _normalize_float(volume_m3)
@@ -496,6 +550,8 @@ async def segment_images(
     with open(tri_meta_file, "w") as f:
         json.dump({
             "arm_length_cm": arm_length_cm,
+            "arm_width_cm": arm_width_cm,
+            "volume_method": resolved_vol_method,
             "trihedron_data": trihedron_data,
             "recon_meta": recon_meta,
             "volume_cm3": est_cm3,
@@ -504,6 +560,7 @@ async def segment_images(
 
     _save_run_measurement(run_dir, {
         "strategy": strategy,
+        "volume_method": resolved_vol_method,
         "sample_name": cleaned_sample,
         "estimated_volume_cm3": est_cm3,
         "estimated_volume_m3": est_m3,
@@ -516,11 +573,14 @@ async def segment_images(
         "run_id": run_id,
         "focal_length": focal_length,
         "arm_length_cm": arm_length_cm,
+        "arm_width_cm": arm_width_cm,
+        "volume_method": resolved_vol_method,
         "exif": exif,
         "images": {v: f"/data/{run_id}/photo_{v}.jpg" for v in photo_paths},
         "masks": {v: f"/data/{run_id}/mask_{v}.png?t={ts}" for v in mask_paths},
         "overlays": overlays if overlays else None,
         "trihedron_data": trihedron_data if trihedron_data else None,
+        "recon_meta": recon_meta if recon_meta else None,
         "estimated_volume_cm3": est_cm3,
         "estimated_volume_m3": est_m3,
         "direct_volume_cm3": validated_direct,
@@ -537,6 +597,8 @@ class UpdateMaskRequest(BaseModel):
     view: str  # 'xy', 'yz', or 'xz'
     focal_length: float
     arm_length_cm: Optional[float] = 20.0
+    arm_width_cm: Optional[float] = 0.5
+    volume_method: Optional[str] = None
     fg_rects: List[List[int]] = []
     bg_rects: List[List[int]] = []
 
@@ -563,15 +625,20 @@ async def update_mask(req: UpdateMaskRequest):
         masks[v] = np.array(img) > 128
 
     arm_len = req.arm_length_cm or 20.0
-    volume_cm3, volume_m3, _ = _compute_volumes(
+    arm_w = req.arm_width_cm or 0.5
+    resolved_vol_method = _resolve_volume_method(run_dir=run_dir, requested_method=req.volume_method)
+    volume_cm3, volume_m3, recon_meta = _compute_volumes(
         run_dir=run_dir,
         masks=masks,
         focal_length=req.focal_length,
         arm_length_cm=arm_len,
+        arm_width_cm=arm_w,
+        volume_method=resolved_vol_method,
     )
     est_cm3 = _normalize_float(round(volume_cm3, 2))
     est_m3 = _normalize_float(volume_m3)
     _save_run_measurement(run_dir, {
+        "volume_method": resolved_vol_method,
         "estimated_volume_cm3": est_cm3,
         "estimated_volume_m3": est_m3,
     })
@@ -579,6 +646,8 @@ async def update_mask(req: UpdateMaskRequest):
     ts = int(datetime.now().timestamp())
     return JSONResponse({
         "mask_url": f"/data/{req.run_id}/mask_{req.view}.png?t={ts}",
+        "volume_method": resolved_vol_method,
+        "recon_meta": recon_meta if recon_meta else None,
         "estimated_volume_cm3": est_cm3,
         "estimated_volume_m3": est_m3,
     })
@@ -591,6 +660,8 @@ class ResegmentRequest(BaseModel):
     strategy: str = "trihedron"
     focal_length: float = 50.0
     arm_length_cm: float = 20.0
+    arm_width_cm: float = 0.5
+    volume_method: Optional[str] = None
     alpha: int = 16
     min_cluster_pct: float = 1.0
 
@@ -598,6 +669,7 @@ class ResegmentRequest(BaseModel):
 @app.post("/api/resegment")
 async def resegment_images(req: ResegmentRequest):
     run_dir = _resolve_run_dir(req.run_id)
+    resolved_vol_method = _resolve_volume_method(strategy=req.strategy, requested_method=req.volume_method)
 
     photo_paths = {
         v: run_dir / f"photo_{v}.jpg" for v in ["xy", "yz", "xz"]
@@ -620,10 +692,15 @@ async def resegment_images(req: ResegmentRequest):
             clusters[view] = view_clusters
             visible_codes = [c["code"] for c in view_clusters]
             masks[view] = _initial_svd_mask(run_dir, view, RESOLUTION, visible_codes)
-        elif req.strategy == "trihedron":
+        elif req.strategy in ("trihedron", "projective_bounds"):
             masks[view] = strategy_obj.create_mask(str(img_path), RESOLUTION)
             img_bgr = cv2.imread(str(img_path))
-            kp = find_trihedron_keypoints(img_bgr, view=view, arm_length_cm=req.arm_length_cm)
+            kp = find_trihedron_keypoints(
+                img_bgr,
+                view=view,
+                arm_length_cm=req.arm_length_cm,
+                arm_width_cm=req.arm_width_cm,
+            )
             if kp is not None:
                 overlay_bgr = draw_trihedron_overlay(img_bgr, kp)
                 overlay_file = run_dir / f"overlay_{view}.jpg"
@@ -632,6 +709,7 @@ async def resegment_images(req: ResegmentRequest):
                 trihedron_data[view] = {
                     "vertex": kp.vertex,
                     "arm_length_px": kp.arm_length_px,
+                    "arm_width_px": kp.arm_width_px,
                     "scale_px_per_cm": kp.px_per_cm,
                     "reproj_error_px": kp.reproj_error,
                 }
@@ -654,15 +732,19 @@ async def resegment_images(req: ResegmentRequest):
         masks=masks,
         focal_length=req.focal_length,
         arm_length_cm=req.arm_length_cm,
+        arm_width_cm=req.arm_width_cm,
+        volume_method=resolved_vol_method,
     )
     est_cm3 = _normalize_float(round(volume_cm3, 2))
     est_m3 = _normalize_float(volume_m3)
 
-    if req.strategy == "trihedron" and trihedron_data:
+    if req.strategy in ("trihedron", "projective_bounds") and trihedron_data:
         tri_meta_file = run_dir / "trihedron_metadata.json"
         with open(tri_meta_file, "w") as f:
             json.dump({
                 "arm_length_cm": req.arm_length_cm,
+                "arm_width_cm": req.arm_width_cm,
+                "volume_method": resolved_vol_method,
                 "trihedron_data": trihedron_data,
                 "recon_meta": recon_meta,
                 "volume_cm3": est_cm3,
@@ -671,6 +753,7 @@ async def resegment_images(req: ResegmentRequest):
 
     _save_run_measurement(run_dir, {
         "strategy": req.strategy,
+        "volume_method": resolved_vol_method,
         "estimated_volume_cm3": est_cm3,
         "estimated_volume_m3": est_m3,
     })
@@ -680,6 +763,8 @@ async def resegment_images(req: ResegmentRequest):
         "masks": {v: f"/data/{req.run_id}/mask_{v}.png?t={ts}" for v in masks},
         "overlays": overlays if overlays else None,
         "trihedron_data": trihedron_data if trihedron_data else None,
+        "volume_method": resolved_vol_method,
+        "recon_meta": recon_meta if recon_meta else None,
         "estimated_volume_cm3": est_cm3,
         "estimated_volume_m3": est_m3,
         "clusters": clusters if req.strategy == "svdcodes" else None,
@@ -725,6 +810,8 @@ class ComputeFromClustersRequest(BaseModel):
     run_id: str
     focal_length: float
     arm_length_cm: Optional[float] = 20.0
+    arm_width_cm: Optional[float] = 0.5
+    volume_method: Optional[str] = None
     selected_codes: Dict[str, List[int]]
 
 
@@ -751,16 +838,21 @@ async def compute_from_clusters(req: ComputeFromClustersRequest):
         save_mask(masks[view], run_dir / f"mask_{view}.png")
 
     arm_len = req.arm_length_cm or 20.0
-    volume_cm3, volume_m3, _ = _compute_volumes(
+    arm_w = req.arm_width_cm or 0.5
+    resolved_vol_method = _resolve_volume_method(run_dir=run_dir, requested_method=req.volume_method)
+    volume_cm3, volume_m3, recon_meta = _compute_volumes(
         run_dir=run_dir,
         masks=masks,
         focal_length=req.focal_length,
         arm_length_cm=arm_len,
+        arm_width_cm=arm_w,
+        volume_method=resolved_vol_method,
     )
     est_cm3 = _normalize_float(round(volume_cm3, 2))
     est_m3 = _normalize_float(volume_m3)
     _save_run_measurement(run_dir, {
         "strategy": "svdcodes",
+        "volume_method": resolved_vol_method,
         "estimated_volume_cm3": est_cm3,
         "estimated_volume_m3": est_m3,
     })
@@ -768,6 +860,8 @@ async def compute_from_clusters(req: ComputeFromClustersRequest):
     ts = int(datetime.now().timestamp())
     return JSONResponse({
         "masks": {v: f"/data/{req.run_id}/mask_{v}.png?t={ts}" for v in masks},
+        "volume_method": resolved_vol_method,
+        "recon_meta": recon_meta if recon_meta else None,
         "estimated_volume_cm3": est_cm3,
         "estimated_volume_m3": est_m3,
     })
@@ -779,6 +873,8 @@ class CalculateVolumeRequest(BaseModel):
     run_id: str
     focal_length: float
     arm_length_cm: Optional[float] = 20.0
+    arm_width_cm: Optional[float] = 0.5
+    volume_method: Optional[str] = None
 
 
 @app.post("/api/calculate-volume")
@@ -794,20 +890,27 @@ async def calculate_volume(req: CalculateVolumeRequest):
         masks[view] = np.array(img) > 128
 
     arm_len = req.arm_length_cm or 20.0
-    volume_cm3, volume_m3, _ = _compute_volumes(
+    arm_w = req.arm_width_cm or 0.5
+    resolved_vol_method = _resolve_volume_method(run_dir=run_dir, requested_method=req.volume_method)
+    volume_cm3, volume_m3, recon_meta = _compute_volumes(
         run_dir=run_dir,
         masks=masks,
         focal_length=req.focal_length,
         arm_length_cm=arm_len,
+        arm_width_cm=arm_w,
+        volume_method=resolved_vol_method,
     )
     est_cm3 = _normalize_float(round(volume_cm3, 2))
     est_m3 = _normalize_float(volume_m3)
     _save_run_measurement(run_dir, {
+        "volume_method": resolved_vol_method,
         "estimated_volume_cm3": est_cm3,
         "estimated_volume_m3": est_m3,
     })
 
     return JSONResponse({
+        "volume_method": resolved_vol_method,
+        "recon_meta": recon_meta if recon_meta else None,
         "estimated_volume_cm3": est_cm3,
         "estimated_volume_m3": est_m3,
     })

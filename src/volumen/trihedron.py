@@ -29,6 +29,8 @@ class TrihedronKeypoints:
     rvec: Optional[np.ndarray] = None         # PnP rotation vector (3, 1)
     tvec: Optional[np.ndarray] = None         # PnP translation vector (3, 1)
     reproj_error: Optional[float] = None      # Mean reprojection error (px)
+    arm_width_px: Optional[float] = None      # Measured projected width of trihedron arms (px)
+    image_shape: Optional[Tuple[int, int]] = None  # Source image (height, width) in pixels
 
 def extract_red_mask(image_bgr: np.ndarray) -> np.ndarray:
     """Extracts binary mask of the red trihedron in BGR image."""
@@ -55,15 +57,128 @@ def extract_red_mask(image_bgr: np.ndarray) -> np.ndarray:
 
     return tri_mask
 
+
+def _median_tip(xs: np.ndarray, ys: np.ndarray, mask: np.ndarray) -> Tuple[float, float]:
+    """Return the median (x, y) coordinates of pixels satisfying mask."""
+    return (float(np.median(xs[mask])), float(np.median(ys[mask])))
+
+
+def _fit_arm_line_and_width(
+    xs: np.ndarray,
+    ys: np.ndarray,
+    horizontal: bool,
+) -> Tuple[Optional[Tuple[float, float, float, float]], Optional[float]]:
+    """
+    Fit a 2D line (vx, vy, x0, y0) and estimate median cross-sectional width
+    for a set of pixels along a single trihedron arm.
+    """
+    if len(xs) < 10:
+        return None, None
+
+    pts = np.column_stack([xs, ys]).astype(np.float32)
+    line = cv2.fitLine(pts, cv2.DIST_L2, 0, 0.01, 0.01).ravel()
+    vx, vy, x0, y0 = float(line[0]), float(line[1]), float(line[2]), float(line[3])
+
+    widths = []
+    if horizontal:
+        for ux in np.unique(xs):
+            col_ys = ys[xs == ux]
+            widths.append(float(np.max(col_ys) - np.min(col_ys) + 1))
+    else:
+        for uy in np.unique(ys):
+            row_xs = xs[ys == uy]
+            widths.append(float(np.max(row_xs) - np.min(row_xs) + 1))
+
+    arm_w = float(np.median(widths)) if widths else None
+    return (vx, vy, x0, y0), arm_w
+
+
+def _intersect_lines(
+    line_a: Tuple[float, float, float, float],
+    line_b: Tuple[float, float, float, float],
+) -> Optional[Tuple[float, float]]:
+    """Compute intersection of two lines parameterized as (vx, vy, x0, y0)."""
+    vx1, vy1, x1, y1 = line_a
+    vx2, vy2, x2, y2 = line_b
+    det = -vx1 * vy2 + vy1 * vx2
+    if abs(det) < 1e-6:
+        return None
+    dx = x2 - x1
+    dy = y2 - y1
+    t = (-dx * vy2 + dy * vx2) / det
+    return (x1 + t * vx1, y1 + t * vy1)
+
+
+def _refine_corner_from_arms(
+    xs: np.ndarray,
+    ys: np.ndarray,
+    tip_h: Tuple[float, float],
+    tip_v: Tuple[float, float],
+    v_goes_down: bool,
+) -> Tuple[Tuple[float, float], Optional[float]]:
+    """
+    Refine corner vertex p0 and estimate arm width (px) by fitting centerlines
+    to the outer sections of the horizontal and vertical in-plane arms.
+    """
+    c0 = (tip_v[0], tip_h[1])
+    span_h = abs(tip_h[0] - c0[0])
+    span_v = abs(tip_v[1] - c0[1])
+
+    band_h = max(12.0, 0.25 * span_h)
+    band_v = max(12.0, 0.25 * span_v)
+
+    h_mask = (
+        (xs >= c0[0] + 0.35 * span_h)
+        & (xs <= c0[0] + 0.92 * span_h)
+        & (np.abs(ys - tip_h[1]) <= band_h)
+    )
+    if v_goes_down:
+        v_mask = (
+            (ys >= c0[1] + 0.35 * span_v)
+            & (ys <= c0[1] + 0.92 * span_v)
+            & (np.abs(xs - tip_v[0]) <= band_v)
+        )
+    else:
+        v_mask = (
+            (ys <= c0[1] - 0.35 * span_v)
+            & (ys >= c0[1] - 0.92 * span_v)
+            & (np.abs(xs - tip_v[0]) <= band_v)
+        )
+
+    line_h, w_h = _fit_arm_line_and_width(xs[h_mask], ys[h_mask], horizontal=True)
+    line_v, w_v = _fit_arm_line_and_width(xs[v_mask], ys[v_mask], horizontal=False)
+
+    widths = [w for w in (w_h, w_v) if w is not None and w > 0]
+    arm_width_px = float(np.median(widths)) if widths else None
+
+    if line_h is not None and line_v is not None:
+        inter = _intersect_lines(line_h, line_v)
+        if inter is not None:
+            max_shift = max(40.0, 0.25 * max(span_h, span_v))
+            if np.hypot(inter[0] - c0[0], inter[1] - c0[1]) <= max_shift:
+                return inter, arm_width_px
+
+    search_r = max(15.0, min(60.0, 0.1 * max(span_h, span_v)))
+    dists = np.hypot(xs - c0[0], ys - c0[1])
+    nearby = dists < search_r
+    if np.any(nearby):
+        p0 = (float(np.mean(xs[nearby])), float(np.mean(ys[nearby])))
+    else:
+        p0 = c0
+    return p0, arm_width_px
+
+
 def find_trihedron_keypoints(
     image_bgr: np.ndarray,
     view: str,
     arm_length_cm: float = 20.0,
+    arm_width_cm: float = 0.5,
     focal_length_mm: float = 50.0,
     sensor_width_mm: float = 36.0,
 ) -> Optional[TrihedronKeypoints]:
     """
     Detects the red trihedron in the image for the given view ('xy', 'xz', 'yz').
+    Default reference dimensions: 200 mm (20.0 cm) arm length, 5 mm (0.5 cm) arm width.
     Returns TrihedronKeypoints with vertex, arm endpoints, metric scale, and PnP pose.
     """
     height, width = image_bgr.shape[:2]
@@ -74,80 +189,43 @@ def find_trihedron_keypoints(
         return None
 
     ys, xs = np.where(tri_mask > 0)
+    x_span = float(np.max(xs) - np.min(xs))
+    y_span = float(np.max(ys) - np.min(ys))
+    slice_x = max(2.0, 0.02 * x_span)
+    slice_y = max(2.0, 0.02 * y_span)
 
     if view == "xy":
-        # In XY (top-down view):
-        # PX is rightmost (max X) along table
-        # PY is bottommost (max Y) along table
-        # PZ is pointing toward camera (up-left: min X + Y)
-        # P0 corner is junction between PX and PY (near (PY[0], PX[1]))
-        tip_x = (float(xs[np.argmax(xs)]), float(ys[np.argmax(xs)]))
-        tip_y = (float(xs[np.argmax(ys)]), float(ys[np.argmax(ys)]))
+        # In XY (top-down view): PX rightmost (+x), PY bottommost (+y), PZ toward camera
+        tip_x = _median_tip(xs, ys, xs >= np.max(xs) - slice_x)
+        tip_y = _median_tip(xs, ys, ys >= np.max(ys) - slice_y)
         min_idx = np.argmin(xs + ys)
         tip_z = (float(xs[min_idx]), float(ys[min_idx]))
 
-        approx_corner = np.array([tip_y[0], tip_x[1]])
-        dists = np.hypot(xs - approx_corner[0], ys - approx_corner[1])
-        nearby = dists < 40
-        if np.any(nearby):
-            p0 = (float(np.mean(xs[nearby])), float(np.mean(ys[nearby])))
-        else:
-            p0 = (float(approx_corner[0]), float(approx_corner[1]))
-
+        p0, arm_width_px = _refine_corner_from_arms(xs, ys, tip_h=tip_x, tip_v=tip_y, v_goes_down=True)
         len_x = np.hypot(tip_x[0] - p0[0], tip_x[1] - p0[1])
         len_y = np.hypot(tip_y[0] - p0[0], tip_y[1] - p0[1])
         avg_arm_len_px = (len_x + len_y) / 2.0
 
     elif view == "xz":
-        # In XZ (side elevation view along Y):
-        # PZ is vertical arm (pointing straight up: min y)
-        # PX is horizontal arm on table (pointing right: max x)
-        # PY is forward arm (pointing toward camera down-left: min x, max y)
-        # P0 is junction between PZ and PX: x near PZ[0], y near PX[1]
-        top_idx = np.argmin(ys)
-        tip_z = (float(xs[top_idx]), float(ys[top_idx]))
-
-        right_idx = np.argmax(xs)
-        tip_x = (float(xs[right_idx]), float(ys[right_idx]))
-
+        # In XZ (side elevation along Y): PZ vertical up (-y), PX horizontal right (+x), PY forward
+        tip_z = _median_tip(xs, ys, ys <= np.min(ys) + slice_y)
+        tip_x = _median_tip(xs, ys, xs >= np.max(xs) - slice_x)
         bot_left_idx = np.argmin(xs)
         tip_y = (float(xs[bot_left_idx]), float(ys[bot_left_idx]))
 
-        approx_corner = np.array([tip_z[0], tip_x[1]])
-        dists = np.hypot(xs - approx_corner[0], ys - approx_corner[1])
-        nearby = dists < 40
-        if np.any(nearby):
-            p0 = (float(np.mean(xs[nearby])), float(np.mean(ys[nearby])))
-        else:
-            p0 = (float(approx_corner[0]), float(approx_corner[1]))
-
+        p0, arm_width_px = _refine_corner_from_arms(xs, ys, tip_h=tip_x, tip_v=tip_z, v_goes_down=False)
         len_x = np.hypot(tip_x[0] - p0[0], tip_x[1] - p0[1])
         len_z = np.hypot(tip_z[0] - p0[0], tip_z[1] - p0[1])
         avg_arm_len_px = (len_x + len_z) / 2.0
 
     elif view == "yz":
-        # In YZ (side elevation view along X):
-        # PZ is vertical arm (pointing straight up: min y)
-        # PY is horizontal arm on table (pointing right: max x)
-        # PX is forward arm (pointing toward camera down-left: min x, max y)
-        # P0 is junction between PZ and PY
-        top_idx = np.argmin(ys)
-        tip_z = (float(xs[top_idx]), float(ys[top_idx]))
-
-        right_idx = np.argmax(xs)
-        tip_y = (float(xs[right_idx]), float(ys[right_idx]))
-
+        # In YZ (side elevation along X): PZ vertical up (-y), PY horizontal right (+x), PX forward
+        tip_z = _median_tip(xs, ys, ys <= np.min(ys) + slice_y)
+        tip_y = _median_tip(xs, ys, xs >= np.max(xs) - slice_x)
         bot_left_idx = np.argmin(xs)
         tip_x = (float(xs[bot_left_idx]), float(ys[bot_left_idx]))
 
-        approx_corner = np.array([tip_z[0], tip_y[1]])
-        dists = np.hypot(xs - approx_corner[0], ys - approx_corner[1])
-        nearby = dists < 40
-        if np.any(nearby):
-            p0 = (float(np.mean(xs[nearby])), float(np.mean(ys[nearby])))
-        else:
-            p0 = (float(approx_corner[0]), float(approx_corner[1]))
-
+        p0, arm_width_px = _refine_corner_from_arms(xs, ys, tip_h=tip_y, tip_v=tip_z, v_goes_down=False)
         len_y = np.hypot(tip_y[0] - p0[0], tip_y[1] - p0[1])
         len_z = np.hypot(tip_z[0] - p0[0], tip_z[1] - p0[1])
         avg_arm_len_px = (len_y + len_z) / 2.0
@@ -194,7 +272,9 @@ def find_trihedron_keypoints(
         mask=tri_mask,
         rvec=rvec,
         tvec=tvec,
-        reproj_error=reproj_err
+        reproj_error=reproj_err,
+        arm_width_px=arm_width_px,
+        image_shape=(height, width),
     )
 
 def draw_trihedron_overlay(image_bgr: np.ndarray, kp: TrihedronKeypoints) -> np.ndarray:

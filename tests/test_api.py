@@ -183,3 +183,88 @@ def test_direct_volume_validation_and_segment_optional_fields(tmp_path, monkeypa
     })
     assert bad_id.status_code == 400
 
+
+def _make_calibrated_plant_img(view: str) -> io.BytesIO:
+    # 400x400 image with 200 mm (20 cm) arm length -> 200 px (10 px/cm) and 5 mm (0.5 cm) width -> 5 px
+    img = np.full((400, 400, 3), 120, dtype=np.uint8)
+    if view == "xy":
+        # Vertex at (50, 50), X arm to x=250, Y arm to y=250
+        img[47:53, 50:250] = (20, 20, 240)
+        img[50:250, 47:53] = (20, 20, 240)
+        # Circular green plant of radius 60 px (6 cm) centered at (160, 160)
+        cv2.circle(img, (160, 160), 60, (30, 180, 40), -1)
+    else:
+        # Vertex at (50, 300), horizontal arm to x=250, Z arm up to y=100
+        img[297:303, 50:250] = (20, 20, 240)
+        img[100:300, 47:53] = (20, 20, 240)
+        # Circular green plant of radius 60 px (6 cm) centered at (160, 210)
+        cv2.circle(img, (160, 210), 60, (30, 180, 40), -1)
+    _, buf = cv2.imencode(".jpg", img)
+    return io.BytesIO(buf.tobytes())
+
+
+def test_projective_bounds_api_workflow(tmp_path, monkeypatch):
+    import website.main as web_main
+
+    monkeypatch.setattr(web_main, "VOLUME_DIR", tmp_path)
+
+    index_res = client.get("/")
+    assert index_res.status_code == 200
+    assert "Projective Bounds (Chopin et al. 2017)" in index_res.text
+
+    files = {
+        "photo_xy": ("photo_xy.jpg", _make_calibrated_plant_img("xy"), "image/jpeg"),
+        "photo_yz": ("photo_yz.jpg", _make_calibrated_plant_img("yz"), "image/jpeg"),
+        "photo_xz": ("photo_xz.jpg", _make_calibrated_plant_img("xz"), "image/jpeg"),
+    }
+    res = client.post(
+        "/api/segment",
+        files=files,
+        data={
+            "strategy": "projective_bounds",
+            "arm_length_cm": 20.0,
+            "arm_width_cm": 0.5,
+        },
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["volume_method"] == "projective_bounds"
+    assert body["arm_length_cm"] == 20.0
+    assert body["arm_width_cm"] == 0.5
+
+    recon = body["recon_meta"]
+    assert recon is not None
+    assert recon["method"] == "chopin_projective_bounds"
+    assert recon["lower_bound_cm3"] > 0
+    assert recon["upper_bound_cm3"] > recon["lower_bound_cm3"]
+
+    # Sphere of radius 6 cm has true volume 4/3 * pi * 216 = 904.78 cm^3
+    true_vol = (4.0 / 3.0) * np.pi * (6.0 ** 3)
+    assert abs(body["estimated_volume_cm3"] - true_vol) / true_vol < 0.12
+
+    run_id = body["run_id"]
+
+    # Recalculate preserves projective_bounds and arm_width_cm
+    recalc = client.post(
+        "/api/calculate-volume",
+        json={"run_id": run_id, "focal_length": 50.0, "arm_length_cm": 20.0, "arm_width_cm": 0.5},
+    )
+    assert recalc.status_code == 200
+    assert recalc.json()["volume_method"] == "projective_bounds"
+    assert recalc.json()["estimated_volume_cm3"] == body["estimated_volume_cm3"]
+
+    # Switch to visual hull via resegment and verify method switch
+    reseg = client.post(
+        "/api/resegment",
+        json={
+            "run_id": run_id,
+            "strategy": "trihedron",
+            "focal_length": 50.0,
+            "arm_length_cm": 20.0,
+            "arm_width_cm": 0.5,
+        },
+    )
+    assert reseg.status_code == 200
+    assert reseg.json()["volume_method"] == "visual_hull"
+    assert reseg.json()["estimated_volume_cm3"] > 0
+
